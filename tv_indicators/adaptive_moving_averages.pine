@@ -1,0 +1,83 @@
+//@version=5
+indicator("Adaptive Moving Averages", shorttitle="Adaptive MA", overlay=true)
+
+// ============================================
+// ADAPTIVE MOVING AVERAGE INDICATOR
+// ============================================
+// Automatically switches between weekly and daily SMAs based on chart timeframe
+// Weekly: SMA 4W, 10W, 30W, 40W
+// Daily: SMA 20D, 50D, 150D, 200D (equivalent to weekly)
+// ============================================
+
+// ================== SETTINGS ==================
+
+// Enable/Disable individual MAs
+show_ma1 = input.bool(true, "Show MA1 (4W/20D)", group="Visibility")
+show_ma2 = input.bool(true, "Show MA2 (10W/50D)", group="Visibility")
+show_ma3 = input.bool(true, "Show MA3 (30W/150D)", group="Visibility")
+show_ma4 = input.bool(true, "Show MA4 (40W/200D)", group="Visibility")
+
+// Color settings
+color_ma1 = input.color(color.new(#f99601, 0), "MA1 Color (4W/20D)", group="Colors")
+color_ma2 = input.color(color.new(#0da134, 0), "MA2 Color (10W/50D)", group="Colors")
+color_ma3 = input.color(color.new(#b100d1, 0), "MA3 Color (30W/150D)", group="Colors")
+color_ma4 = input.color(color.new(#f32c1e, 0), "MA4 Color (40W/200D)", group="Colors")
+
+// Line width settings
+width_ma1 = input.int(1, "MA1 Line Width", minval=1, maxval=4, group="Line Styles")
+width_ma2 = input.int(1, "MA2 Line Width", minval=1, maxval=4, group="Line Styles")
+width_ma3 = input.int(1, "MA3 Line Width", minval=1, maxval=4, group="Line Styles")
+width_ma4 = input.int(1, "MA4 Line Width", minval=1, maxval=4, group="Line Styles")
+
+// Advanced: Manual override
+use_manual_override = input.bool(false, "Use Manual Period Override", group="Advanced")
+manual_period1 = input.int(20, "Manual MA1 Period", minval=1, group="Advanced")
+manual_period2 = input.int(50, "Manual MA2 Period", minval=1, group="Advanced")
+manual_period3 = input.int(150, "Manual MA3 Period", minval=1, group="Advanced")
+manual_period4 = input.int(200, "Manual MA4 Period", minval=1, group="Advanced")
+
+// ================== LOGIC ==================
+
+// Detect if current timeframe is weekly or higher
+isWeeklyOrHigher = timeframe.isweekly or timeframe.ismonthly or timeframe.isdaily == false and timeframe.multiplier >= 1440
+
+// Adaptive periods (5 trading days per week approximation)
+// Weekly equivalents: 4W=20D, 10W=50D, 30W=150D, 40W=200D
+period1 = use_manual_override ? manual_period1 : (isWeeklyOrHigher ? 4 : 20)
+period2 = use_manual_override ? manual_period2 : (isWeeklyOrHigher ? 10 : 50)
+period3 = use_manual_override ? manual_period3 : (isWeeklyOrHigher ? 30 : 150)
+period4 = use_manual_override ? manual_period4 : (isWeeklyOrHigher ? 40 : 200)
+
+// Calculate SMAs
+ma1 = ta.sma(close, period1)
+ma2 = ta.sma(close, period2)
+ma3 = ta.sma(close, period3)
+ma4 = ta.sma(close, period4)
+
+// ================== PLOTTING ==================
+
+// Plot MAs with conditional visibility
+plot(show_ma1 ? ma1 : na, title="MA1 (4W/20D)", color=color_ma1, linewidth=width_ma1)
+plot(show_ma2 ? ma2 : na, title="MA2 (10W/50D)", color=color_ma2, linewidth=width_ma2)
+plot(show_ma3 ? ma3 : na, title="MA3 (30W/150D)", color=color_ma3, linewidth=width_ma3)
+plot(show_ma4 ? ma4 : na, title="MA4 (40W/200D)", color=color_ma4, linewidth=width_ma4)
+
+// ================== LABELS ==================
+// Label removed as per user request
+
+// ================== ALERTS ==================
+
+// Price crosses above/below MA4 (longest MA)
+crossAboveMA4 = ta.crossover(close, ma4)
+crossBelowMA4 = ta.crossunder(close, ma4)
+
+alertcondition(crossAboveMA4, title="Price Crosses Above MA4", message="{{ticker}} crossed above MA4 (40W/200D)")
+alertcondition(crossBelowMA4, title="Price Crosses Below MA4", message="{{ticker}} crossed below MA4 (40W/200D)")
+
+// MA alignment (bullish = all MAs in order)
+bullishAlignment = ma1 > ma2 and ma2 > ma3 and ma3 > ma4
+bearishAlignment = ma1 < ma2 and ma2 < ma3 and ma3 < ma4
+
+alertcondition(bullishAlignment and not bullishAlignment[1], title="Bullish MA Alignment", message="{{ticker}} shows bullish MA alignment")
+alertcondition(bearishAlignment and not bearishAlignment[1], title="Bearish MA Alignment", message="{{ticker}} shows bearish MA alignment")
+

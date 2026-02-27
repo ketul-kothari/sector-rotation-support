@@ -1,0 +1,198 @@
+MES_code,MES_name,Sector_code,Sector_name,Industry_code,Industry_name,basic_industry_code,basic_industry_name
+IN01,Commodities,IN0101,Chemicals,IN010101,Chemicals & Petrochemicals,IN010101001,Commodity Chemicals
+IN01,Commodities,IN0101,Chemicals,IN010101,Chemicals & Petrochemicals,IN010101002,Specialty Chemicals
+IN01,Commodities,IN0101,Chemicals,IN010101,Chemicals & Petrochemicals,IN010101003,Carbon Black
+IN01,Commodities,IN0101,Chemicals,IN010101,Chemicals & Petrochemicals,IN010101004,Dyes And Pigments
+IN01,Commodities,IN0101,Chemicals,IN010101,Chemicals & Petrochemicals,IN010101005,Explosives
+IN01,Commodities,IN0101,Chemicals,IN010101,Chemicals & Petrochemicals,IN010101006,Petrochemicals
+IN01,Commodities,IN0101,Chemicals,IN010101,Chemicals & Petrochemicals,IN010101007,Printing Inks
+IN01,Commodities,IN0101,Chemicals,IN010101,Chemicals & Petrochemicals,IN010101008,Trading - Chemicals
+IN01,Commodities,IN0101,Chemicals,IN010101,Chemicals & Petrochemicals,IN010101009,Industrial Gases
+IN01,Commodities,IN0101,Chemicals,IN010102,Fertilizers & Agrochemicals,IN010102001,Fertilizers
+IN01,Commodities,IN0101,Chemicals,IN010102,Fertilizers & Agrochemicals,IN010102002,Pesticides & Agrochemicals
+IN01,Commodities,IN0102,Construction Materials,IN010203,Cement & Cement Products,IN010203001,Cement & Cement Products
+IN01,Commodities,IN0102,Construction Materials,IN010204,Other Construction Materials,IN010204001,Other Construction Materials
+IN01,Commodities,IN0103,Metals & Mining,IN010301,Ferrous Metals,IN010301001,Ferro & Silica Manganese
+IN01,Commodities,IN0103,Metals & Mining,IN010301,Ferrous Metals,IN010301002,Pig Iron
+IN01,Commodities,IN0103,Metals & Mining,IN010301,Ferrous Metals,IN010301003,Sponge Iron
+IN01,Commodities,IN0103,Metals & Mining,IN010301,Ferrous Metals,IN010301004,Iron & Steel
+IN01,Commodities,IN0103,Metals & Mining,IN010302,Non - Ferrous Metals,IN010302001,Aluminium
+IN01,Commodities,IN0103,Metals & Mining,IN010302,Non - Ferrous Metals,IN010302002,Copper
+IN01,Commodities,IN0103,Metals & Mining,IN010302,Non - Ferrous Metals,IN010302003,Zinc
+IN01,Commodities,IN0103,Metals & Mining,IN010302,Non - Ferrous Metals,IN010302004,Precious Metals
+IN01,Commodities,IN0103,Metals & Mining,IN010303,Diversified Metals,IN010303001,Diversified Metals
+IN01,Commodities,IN0103,Metals & Mining,IN010304,Minerals & Mining,IN010304001,Industrial Minerals
+IN01,Commodities,IN0103,Metals & Mining,IN010305,Metals & Minerals Trading,IN010305001,Trading - Metals
+IN01,Commodities,IN0103,Metals & Mining,IN010305,Metals & Minerals Trading,IN010305002,Trading - Minerals
+IN01,Commodities,IN0104,Forest Materials,IN010401,"Paper, Forest & Jute Products",IN010401001,Paper & Paper Products
+IN01,Commodities,IN0104,Forest Materials,IN010401,"Paper, Forest & Jute Products",IN010401002,Forest Products
+IN01,Commodities,IN0104,Forest Materials,IN010401,"Paper, Forest & Jute Products",IN010401003,Jute & Jute Products
+IN02,Consumer Discretionary,IN0201,Automobile and Auto Components,IN020101,Automobiles,IN020101001,Passenger Cars & Utility Vehicles
+IN02,Consumer Discretionary,IN0201,Automobile and Auto Components,IN020101,Automobiles,IN020101002,2/3 Wheelers
+IN02,Consumer Discretionary,IN0201,Automobile and Auto Components,IN020101,Automobiles,IN020101004,Auto Dealer
+IN02,Consumer Discretionary,IN0201,Automobile and Auto Components,IN020102,Auto Components,IN020102001,Auto Components & Equipments
+IN02,Consumer Discretionary,IN0201,Automobile and Auto Components,IN020102,Auto Components,IN020102006,Tyres & Rubber Products
+IN02,Consumer Discretionary,IN0201,Automobile and Auto Components,IN020102,Auto Components,IN020102007,Trading - Auto Components
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201002,Cycles
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201003,Consumer Electronics
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201018,"Furniture, Home Furnishing"
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201019,Ceramics
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201020,Granites & Marbles
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201005,"Gems, Jewellery And Watches"
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201006,Glass - Consumer
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201007,Household Appliances
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201008,Houseware
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201009,Leather And Leather Products
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201010,Leisure Products
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201011,Plastic Products - Consumer
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201012,Plywood Boards/ Laminates
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201013,Sanitary Ware
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201015,Paints
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201016,Diversified consumer products
+IN02,Consumer Discretionary,IN0202,Consumer Durables,IN020201,Consumer Durables,IN020201017,Footwear
+IN02,Consumer Discretionary,IN0203,Textiles,IN020301,Textiles & Apparels,IN020301001,Garments & Apparels
+IN02,Consumer Discretionary,IN0203,Textiles,IN020301,Textiles & Apparels,IN020301002,Other Textile Products
+IN02,Consumer Discretionary,IN0203,Textiles,IN020301,Textiles & Apparels,IN020301003,Trading - Textile Products
+IN02,Consumer Discretionary,IN0204,"Media, Entertainment & Publication",IN020401,Media,IN020401001,Advertising & Media Agencies
+IN02,Consumer Discretionary,IN0204,"Media, Entertainment & Publication",IN020401,Media,IN020401002,Electronic Media
+IN02,Consumer Discretionary,IN0204,"Media, Entertainment & Publication",IN020401,Media,IN020401003,Web based media and service
+IN02,Consumer Discretionary,IN0204,"Media, Entertainment & Publication",IN020401,Media,IN020401004,Print Media
+IN02,Consumer Discretionary,IN0204,"Media, Entertainment & Publication",IN020402,Entertainment,IN020402001,"Film Production, Distribution & Exhibition"
+IN02,Consumer Discretionary,IN0204,"Media, Entertainment & Publication",IN020402,Entertainment,IN020402002,Digital Entertainment
+IN02,Consumer Discretionary,IN0204,"Media, Entertainment & Publication",IN020402,Entertainment,IN020402003,Media & Entertainment
+IN02,Consumer Discretionary,IN0204,"Media, Entertainment & Publication",IN020402,Entertainment,IN020402004,TV Broadcasting & Software Production
+IN02,Consumer Discretionary,IN0204,"Media, Entertainment & Publication",IN020403,Printing & Publication,IN020403001,Printing & Publication
+IN02,Consumer Discretionary,IN0205,Realty,IN020501,Realty,IN020501001,"Residential, Commercial Projects"
+IN02,Consumer Discretionary,IN0205,Realty,IN020501,Realty,IN020501002,Real Estate related services
+IN02,Consumer Discretionary,IN0205,Realty,IN020501,Realty,IN020501003,Real Estate Investment Trusts (REITs)
+IN02,Consumer Discretionary,IN0206,Consumer Services,IN020601,Leisure Services,IN020601001,Hotels & Resorts
+IN02,Consumer Discretionary,IN0206,Consumer Services,IN020601,Leisure Services,IN020601002,Restaurants
+IN02,Consumer Discretionary,IN0206,Consumer Services,IN020601,Leisure Services,IN020601003,Amusement Parks/ Other Recreation
+IN02,Consumer Discretionary,IN0206,Consumer Services,IN020601,Leisure Services,IN020601004,Wellness
+IN02,Consumer Discretionary,IN0206,Consumer Services,IN020601,Leisure Services,IN020601005,"Tour, Travel Related Services"
+IN02,Consumer Discretionary,IN0206,Consumer Services,IN020602,Other Consumer Services,IN020602001,Education
+IN02,Consumer Discretionary,IN0206,Consumer Services,IN020602,Other Consumer Services,IN020602002,E-Learning
+IN02,Consumer Discretionary,IN0206,Consumer Services,IN020602,Other Consumer Services,IN020602003,Food Storage Facilities
+IN02,Consumer Discretionary,IN0206,Consumer Services,IN020602,Other Consumer Services,IN020602004,Other Consumer Services
+IN02,Consumer Discretionary,IN0206,Consumer Services,IN020603,Retailing,IN020603001,Speciality Retail
+IN02,Consumer Discretionary,IN0206,Consumer Services,IN020603,Retailing,IN020603002,Pharmacy Retail
+IN02,Consumer Discretionary,IN0206,Consumer Services,IN020603,Retailing,IN020603003,Diversified Retail
+IN02,Consumer Discretionary,IN0206,Consumer Services,IN020603,Retailing,IN020603004,E-Retail/ E- Commerce
+IN02,Consumer Discretionary,IN0206,Consumer Services,IN020603,Retailing,IN020603005,Internet & Catalogue Retail
+IN02,Consumer Discretionary,IN0206,Consumer Services,IN020603,Retailing,IN020603006,Distributors
+IN03,Energy,IN0301,"Oil, Gas & Consumable Fuels",IN030101,Gas,IN030101001,Gas Transmission/Mark eting
+IN03,Energy,IN0301,"Oil, Gas & Consumable Fuels",IN030101,Gas,IN030101003,LPG/CNG/PNG/LN G Supplier
+IN03,Energy,IN0301,"Oil, Gas & Consumable Fuels",IN030101,Gas,IN030101004,Trading - Gas
+IN03,Energy,IN0301,"Oil, Gas & Consumable Fuels",IN030102,Oil,IN030102001,Oil Exploration & Production
+IN03,Energy,IN0301,"Oil, Gas & Consumable Fuels",IN030102,Oil,IN030102002,Offshore Support Solution Drilling
+IN03,Energy,IN0301,"Oil, Gas & Consumable Fuels",IN030102,Oil,IN030102003,Oil Storage & Transportation
+IN03,Energy,IN0301,"Oil, Gas & Consumable Fuels",IN030102,Oil,IN030102004,Oil Equipment & Services
+IN03,Energy,IN0301,"Oil, Gas & Consumable Fuels",IN030103,Petroleum Products,IN030103001,Refineries & Marketing
+IN03,Energy,IN0301,"Oil, Gas & Consumable Fuels",IN030103,Petroleum Products,IN030103002,Lubricants
+IN03,Energy,IN0301,"Oil, Gas & Consumable Fuels",IN030104,Consumable Fuels,IN030104001,Coal
+IN03,Energy,IN0301,"Oil, Gas & Consumable Fuels",IN030104,Consumable Fuels,IN030104002,Trading - Coal
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040101,Agricultural Food & other Products,IN040101001,Edible Oil
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040101,Agricultural Food & other Products,IN040101002,Sugar
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040101,Agricultural Food & other Products,IN040101003,Tea & Coffee
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040101,Agricultural Food & other Products,IN040101004,Other Agricultural Products
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040102,Beverages,IN040102001,Breweries & Distilleries
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040102,Beverages,IN040102002,Other Beverages
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040103,Cigarettes & Tobacco Products,IN040103001,Cigarettes & Tobacco Products
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040104,Food Products,IN040104001,Animal Feed
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040104,Food Products,IN040104002,Dairy Products
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040104,Food Products,IN040104003,Other Food Products
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040104,Food Products,IN040104004,Packaged Foods
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040104,Food Products,IN040104005,Seafood
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040104,Food Products,IN040104006,Meat Products including Poultry
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040105,Personal Products,IN040105001,Personal Care
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040106,Household Products,IN040106001,Household Products
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040106,Household Products,IN040106004,Stationary
+IN04,Fast Moving Consumer Goods,IN0401,Fast Moving Consumer Goods,IN040107,Diversified FMCG,IN040107001,Diversified FMCG
+IN05,Financial Services,IN0501,Financial Services,IN050101,Finance,IN050101001,Financial Institution
+IN05,Financial Services,IN0501,Financial Services,IN050101,Finance,IN050101002,Housing Finance Company
+IN05,Financial Services,IN0501,Financial Services,IN050101,Finance,IN050101003,Investment Company
+IN05,Financial Services,IN0501,Financial Services,IN050101,Finance,IN050101004,Non Banking Financial Company (NBFC)
+IN05,Financial Services,IN0501,Financial Services,IN050101,Finance,IN050101005,Other Financial Services
+IN05,Financial Services,IN0501,Financial Services,IN050101,Finance,IN050101006,Holding Company
+IN05,Financial Services,IN0501,Financial Services,IN050101,Finance,IN050101007,Microfinance Institutions
+IN05,Financial Services,IN0501,Financial Services,IN050101,Finance,IN050101008,Securitisation
+IN05,Financial Services,IN0501,Financial Services,IN050102,Banks,IN050102001,Public Sector Bank
+IN05,Financial Services,IN0501,Financial Services,IN050102,Banks,IN050102002,Private Sector Bank
+IN05,Financial Services,IN0501,Financial Services,IN050102,Banks,IN050102003,Other Bank
+IN05,Financial Services,IN0501,Financial Services,IN050103,Capital Markets,IN050103001,Asset Management Company
+IN05,Financial Services,IN0501,Financial Services,IN050103,Capital Markets,IN050103002,"Depositories, Clearing Houses and Other Intermediaries"
+IN05,Financial Services,IN0501,Financial Services,IN050103,Capital Markets,IN050103003,Financial Products Distributor
+IN05,Financial Services,IN0501,Financial Services,IN050103,Capital Markets,IN050103004,Ratings
+IN05,Financial Services,IN0501,Financial Services,IN050103,Capital Markets,IN050103005,Exchange and Data Platform
+IN05,Financial Services,IN0501,Financial Services,IN050103,Capital Markets,IN050103006,Stockbroking & Allied
+IN05,Financial Services,IN0501,Financial Services,IN050103,Capital Markets,IN050103007,Other Capital Market related Services
+IN05,Financial Services,IN0501,Financial Services,IN050104,Insurance,IN050104001,General Insurance
+IN05,Financial Services,IN0501,Financial Services,IN050104,Insurance,IN050104002,Life Insurance
+IN05,Financial Services,IN0501,Financial Services,IN050104,Insurance,IN050104003,Other Insurance Companies
+IN05,Financial Services,IN0501,Financial Services,IN050104,Insurance,IN050104004,Insurance Distributors
+IN05,Financial Services,IN0501,Financial Services,IN050105,Financial Technology (Fintech),IN050105001,Financial Technology (Fintech)
+IN06,Healthcare,IN0601,Healthcare,IN060101,Pharmaceuticals & Biotechnology,IN060101001,Pharmaceuticals
+IN06,Healthcare,IN0601,Healthcare,IN060101,Pharmaceuticals & Biotechnology,IN060101002,Biotechnology
+IN06,Healthcare,IN0601,Healthcare,IN060102,Healthcare Equipment & Supplies,IN060102001,Medical Equipment & Supplies
+IN06,Healthcare,IN0601,Healthcare,IN060103,Healthcare Services,IN060103001,Hospital
+IN06,Healthcare,IN0601,Healthcare,IN060103,Healthcare Services,IN060103002,Healthcare Service Provider
+IN06,Healthcare,IN0601,Healthcare,IN060103,Healthcare Services,IN060103003,"Healthcare Research, Analytics & Technology"
+IN07,Industrials,IN0701,Construction,IN070101,Construction,IN070101001,Civil Construction
+IN07,Industrials,IN0702,Capital Goods,IN070201,Aerospace & Defense,IN070201001,Aerospace & Defense
+IN07,Industrials,IN0702,Capital Goods,IN070202,"Agricultural, Commercial & Construction Vehicles",IN070202001,Tractors
+IN07,Industrials,IN0702,Capital Goods,IN070202,"Agricultural, Commercial & Construction Vehicles",IN070202002,Commercial Vehicles
+IN07,Industrials,IN0702,Capital Goods,IN070202,"Agricultural, Commercial & Construction Vehicles",IN070202003,Construction Vehicles
+IN07,Industrials,IN0702,Capital Goods,IN070202,"Agricultural, Commercial & Construction Vehicles",IN070202004,"Dealers– Commercial Vehicles, Tractors,"
+IN07,Industrials,IN0702,Capital Goods,IN070203,Electrical Equipment,IN070203001,Heavy Electrical Equipment
+IN07,Industrials,IN0702,Capital Goods,IN070203,Electrical Equipment,IN070203002,Other Electrical Equipment
+IN07,Industrials,IN0702,Capital Goods,IN070204,Industrial Manufacturing,IN070204005,Railway Wagons
+IN07,Industrials,IN0702,Capital Goods,IN070204,Industrial Manufacturing,IN070204006,Ship Building & Allied Services
+IN07,Industrials,IN0702,Capital Goods,IN070204,Industrial Manufacturing,IN070204008,Industrial Products
+IN07,Industrials,IN0702,Capital Goods,IN070205,Industrial Products,IN070205003,Cables - Electricals
+IN07,Industrials,IN0702,Capital Goods,IN070205,Industrial Products,IN070205004,Castings & Forgings
+IN07,Industrials,IN0702,Capital Goods,IN070205,Industrial Products,IN070205008,Packaging
+IN07,Industrials,IN0702,Capital Goods,IN070205,Industrial Products,IN070205009,Plastic Products - Industrial
+IN07,Industrials,IN0702,Capital Goods,IN070205,Industrial Products,IN070205011,Rubber
+IN07,Industrials,IN0702,Capital Goods,IN070205,Industrial Products,IN070205012,Other Industrial Products
+IN07,Industrials,IN0702,Capital Goods,IN070205,Industrial Products,IN070205013,Glass - Industrial
+IN07,Industrials,IN0702,Capital Goods,IN070205,Industrial Products,IN070205014,"Aluminium, Copper & Zinc Products"
+IN07,Industrials,IN0702,Capital Goods,IN070205,Industrial Products,IN070205015,Iron & Steel Products
+IN07,Industrials,IN0702,Capital Goods,IN070205,Industrial Products,IN070205016,Abrasives & Bearings
+IN07,Industrials,IN0702,Capital Goods,IN070205,Industrial Products,IN070205017,"Compressors, Pumps & Diesel Engines"
+IN07,Industrials,IN0702,Capital Goods,IN070205,Industrial Products,IN070205018,Electrodes & Refractories
+IN08,Information Technology,IN0801,Information Technology,IN080101,IT - Software,IN080101001,Computers - Software & Consulting
+IN08,Information Technology,IN0801,Information Technology,IN080101,IT - Software,IN080101002,Software Products
+IN08,Information Technology,IN0801,Information Technology,IN080102,IT - Services,IN080102001,IT Enabled Services
+IN08,Information Technology,IN0801,Information Technology,IN080103,IT - Hardware,IN080103001,Computers Hardware & Equipments
+IN09,Services,IN0901,Services,IN090101,Engineering Services,IN090101001,Dredging
+IN09,Services,IN0901,Services,IN090102,Transport Services,IN090102001,Airline
+IN09,Services,IN0901,Services,IN090102,Transport Services,IN090102002,Logistics Solution Provider
+IN09,Services,IN0901,Services,IN090102,Transport Services,IN090102003,Railways
+IN09,Services,IN0901,Services,IN090102,Transport Services,IN090102004,Road Transport
+IN09,Services,IN0901,Services,IN090102,Transport Services,IN090102005,Shipping
+IN09,Services,IN0901,Services,IN090102,Transport Services,IN090102006,Transport Related Services
+IN09,Services,IN0901,Services,IN090103,Transport Infrastructure,IN090103001,Airport & Airport services
+IN09,Services,IN0901,Services,IN090103,Transport Infrastructure,IN090103002,Port & Port services
+IN09,Services,IN0901,Services,IN090103,Transport Infrastructure,IN090103004,"Road Assets–Toll, Annuity, Hybrid- Annuity"
+IN09,Services,IN0901,Services,IN090104,Commercial Services & Supplies,IN090104001,Trading & Distributors
+IN09,Services,IN0901,Services,IN090104,Commercial Services & Supplies,IN090104002,Consulting Services
+IN09,Services,IN0901,Services,IN090104,Commercial Services & Supplies,IN090104003,Data Processing Services
+IN09,Services,IN0901,Services,IN090104,Commercial Services & Supplies,IN090104004,Diversified Commercial Services
+IN09,Services,IN0901,Services,IN090104,Commercial Services & Supplies,IN090104005,Business Process Outsourcing (BPO)/ Knowledge Process Outsourcing (KPO)
+IN09,Services,IN0901,Services,IN090105,Public Services,IN090105001,Urban Local Bodies
+IN09,Services,IN0901,Services,IN090105,Public Services,IN090105002,Development Authority
+IN10,Telecommunic ation,IN1001,Telecommunic ation,IN100101,Telecom - Services,IN100101001,Telecom - Cellular & Fixed line services
+IN10,Telecommunic ation,IN1001,Telecommunic ation,IN100101,Telecom - Services,IN100101002,Telecom - Infrastructure
+IN10,Telecommunic ation,IN1001,Telecommunic ation,IN100101,Telecom - Services,IN100101003,Other Telecom Services
+IN10,Telecommunic ation,IN1001,Telecommunic ation,IN100102,Telecom - Equipment & Accessories,IN100102001,Telecom - Equipment & Accessories
+IN11,Utilities,IN1101,Power,IN110101,Power,IN110101004,Power Generation
+IN11,Utilities,IN1101,Power,IN110101,Power,IN110101005,Integrated Power Utilities
+IN11,Utilities,IN1101,Power,IN110101,Power,IN110101002,Power Trading
+IN11,Utilities,IN1101,Power,IN110101,Power,IN110101003,Power - Transmission
+IN11,Utilities,IN1101,Power,IN110101,Power,IN110101006,Power Distribution
+IN11,Utilities,IN1102,Utilities,IN110201,Other Utilities,IN110201001,Water Supply & Management
+IN11,Utilities,IN1102,Utilities,IN110201,Other Utilities,IN110201002,Waste Management
+IN11,Utilities,IN1102,Utilities,IN110201,Other Utilities,IN110201003,Emergency Services
+IN11,Utilities,IN1102,Utilities,IN110201,Other Utilities,IN110201004,Multi Utilities
+IN11,Utilities,IN1102,Utilities,IN110201,Other Utilities,IN110201005,Other Utilities
+IN12,Diversified,IN1201,Diversified,IN120101,Diversified,IN120101001,Diversified

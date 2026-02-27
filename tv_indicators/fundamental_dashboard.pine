@@ -1,0 +1,256 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Fundamental Dashboard - 3 Section Layout
+
+//@version=6
+indicator("Fundamental Dashboard", overlay=true)
+
+// === User Inputs ===
+quartersToShow = input.int(8, 'Quarters to Display', minval=4, maxval=12)
+datasize = quartersToShow + 5
+
+// === Display Settings ===
+tableY = input.string('top', 'Vertical', options=['top', 'middle', 'bottom'])
+tableX = input.string('right', 'Horizontal', options=['left', 'center', 'right'])
+TextSize = input.string('tiny', 'Text Size', options=['tiny', 'small', 'normal'])
+
+// === Theme ===
+HeaderBGColor = color.new(#1a365d, 10)
+RowBGColor = color.new(#1a1a2e, 20)
+SeasonalBG = color.new(color.orange, 70)
+NonSeasonalBG = color.new(color.teal, 70)
+
+UpColor = color.lime
+DownColor = color.red
+FlatColor = color.gray
+GoodColor = color.lime
+OkColor = color.yellow
+BadColor = color.red
+
+// === Financial IDs ===
+EPS_ID = 'EARNINGS_PER_SHARE'
+SALES_ID = 'TOTAL_REVENUE'
+ROE_ID = 'RETURN_ON_EQUITY'
+DE_ID = 'DEBT_TO_EQUITY'
+
+// === Stock Info Data ===
+totalShares = request.financial(syminfo.tickerid, "TOTAL_SHARES_OUTSTANDING", "FY")
+marketCapCrores = (close * totalShares) / 10000000
+
+week52High = request.security(syminfo.tickerid, "D", ta.highest(high, 252))
+week52Low = request.security(syminfo.tickerid, "D", ta.lowest(low, 252))
+pctAbove52Low = ((close - week52Low) / week52Low) * 100
+pctBelow52High = ((week52High - close) / week52High) * 100
+
+sma200 = request.security(syminfo.tickerid, "D", ta.sma(close, 200))
+sma200_1M = request.security(syminfo.tickerid, "D", ta.sma(close[21], 200))
+sma200_3M = request.security(syminfo.tickerid, "D", ta.sma(close[63], 200))
+sma200Pct1M = na(sma200) or na(sma200_1M) or sma200_1M == 0 ? na : ((sma200 - sma200_1M) / sma200_1M) * 100
+sma200Pct3M = na(sma200) or na(sma200_3M) or sma200_3M == 0 ? na : ((sma200 - sma200_3M) / sma200_3M) * 100
+sma200Trend1M = na(sma200) or na(sma200_1M) ? "N/A" : sma200 > sma200_1M ? "Rising" : "Declining"
+sma200Trend3M = na(sma200) or na(sma200_3M) ? "N/A" : sma200 > sma200_3M ? "Rising" : "Declining"
+
+// === Data Arrays ===
+var array<int> dates = array.new_int(datasize)
+var array<float> epsArr = array.new_float(datasize)
+var array<float> salesArr = array.new_float(datasize)
+var array<float> roeArr = array.new_float(datasize)
+var array<float> deArr = array.new_float(datasize)
+
+// === Fetch Financial Data ===
+getData(id) =>
+    request.financial(syminfo.tickerid, id, "FQ", barmerge.gaps_on, ignore_invalid_symbol=true)
+
+eps = getData(EPS_ID)
+sales = getData(SALES_ID)
+roe = getData(ROE_ID)
+de = getData(DE_ID)
+
+// === Update Arrays when new data arrives ===
+if not na(eps)
+    array.unshift(dates, time)
+    array.unshift(epsArr, eps)
+    array.unshift(salesArr, na(sales) ? na : sales / 10000000)
+    array.unshift(roeArr, roe)
+    array.unshift(deArr, de)
+    array.pop(dates)
+    array.pop(epsArr)
+    array.pop(salesArr)
+    array.pop(roeArr)
+    array.pop(deArr)
+
+// === Helper Functions ===
+getQoQChange(arr, idx) =>
+    val = array.get(arr, idx)
+    cmp = array.get(arr, idx + 1)
+    na(val) or na(cmp) or cmp == 0 ? na : (val - cmp) / math.abs(cmp) * 100
+
+getYoYChange(arr, idx) =>
+    val = array.get(arr, idx)
+    cmp = array.get(arr, idx + 4)
+    na(val) or na(cmp) or cmp == 0 ? na : (val - cmp) / math.abs(cmp) * 100
+
+formatPct(val) =>
+    na(val) ? "-" : (val > 0 ? "+" : "") + str.tostring(math.round(val)) + "%"
+
+formatVal(val) =>
+    na(val) ? "-" : str.tostring(val, "#.##")
+
+getGrowthColor(val) =>
+    na(val) ? FlatColor : val > 10 ? UpColor : val > 0 ? color.green : val > -10 ? color.orange : DownColor
+
+getROEColor(val) =>
+    na(val) ? FlatColor : val >= 15 ? GoodColor : val >= 10 ? OkColor : BadColor
+
+getDEColor(val) =>
+    na(val) ? FlatColor : val <= 0.5 ? GoodColor : val <= 1 ? OkColor : BadColor
+
+getCapCat(val) =>
+    na(val) ? "" : val >= 105000 ? "Large" : val >= 34700 ? "Mid" : val >= 1000 ? "Small" : "Micro"
+
+formatMCap(val) =>
+    na(val) ? "N/A" : val >= 100000 ? str.tostring(val / 100000, "#.##") + " L Cr" : val >= 1000 ? str.tostring(val / 1000, "#.##") + " K Cr" : str.tostring(val, "#.##") + " Cr"
+
+// Reverse index to show oldest first (ascending order)
+reverseIdx(i) =>
+    quartersToShow - 1 - i
+
+// === Create Table ===
+// Rows: Header(1) + General(3) + SeasonalHeader(1) + SeasonalData(2) + NonSeasonalHeader(1) + NonSeasonalData(2) + InfoHeader(1) + InfoData(5) = 16
+numCols = quartersToShow + 1
+var table t = table.new(tableY + '_' + tableX, numCols, 16, bgcolor=RowBGColor, frame_color=color.gray, border_color=color.gray, border_width=1)
+
+// === Render Table ===
+if barstate.islast
+    row = 0
+    
+    // === SECTION 1: INFO (Rows 0-5) ===
+    
+    // Row 0: Info Header (merge across all columns)
+    table.cell(t, 0, row, "Info", bgcolor=HeaderBGColor, text_color=color.white, text_size=TextSize)
+    for i = 1 to quartersToShow
+        table.cell(t, i, row, "", bgcolor=HeaderBGColor, text_color=color.white, text_size=TextSize)
+    row += 1
+    
+    // Row 1: Market Cap (Category)
+    table.cell(t, 0, row, "Market Cap (Category)", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
+    table.merge_cells(t, 0, row, 3, row)
+    mcapValue = formatMCap(marketCapCrores) + " (" + getCapCat(marketCapCrores) + ")"
+    table.cell(t, 4, row, mcapValue, bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
+    table.merge_cells(t, 4, row, quartersToShow, row)
+    row += 1
+    
+    // Row 2: % Above 52 Week Low
+    table.cell(t, 0, row, "% Above 52 Week Low", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
+    table.merge_cells(t, 0, row, 3, row)
+    table.cell(t, 4, row, "+" + str.tostring(pctAbove52Low, "#.#") + "%", bgcolor=RowBGColor, text_color=color.green, text_size=TextSize)
+    table.merge_cells(t, 4, row, quartersToShow, row)
+    row += 1
+    
+    // Row 3: % Below 52 Week High
+    table.cell(t, 0, row, "% Below 52 Week High", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
+    table.merge_cells(t, 0, row, 3, row)
+    table.cell(t, 4, row, "-" + str.tostring(pctBelow52High, "#.#") + "%", bgcolor=RowBGColor, text_color=color.red, text_size=TextSize)
+    table.merge_cells(t, 4, row, quartersToShow, row)
+    row += 1
+    
+    // Row 4: SMA 200 (1 Month Trend)
+    table.cell(t, 0, row, "SMA 200 (1 Month Trend)", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
+    table.merge_cells(t, 0, row, 3, row)
+    sma1MColor = sma200Trend1M == "Rising" ? color.green : sma200Trend1M == "Declining" ? color.red : color.white
+    sma1MText = sma200Trend1M + (na(sma200Pct1M) ? "" : " (" + (sma200Pct1M > 0 ? "+" : "") + str.tostring(sma200Pct1M, "#.#") + "%)")
+    table.cell(t, 4, row, sma1MText, bgcolor=RowBGColor, text_color=sma1MColor, text_size=TextSize)
+    table.merge_cells(t, 4, row, quartersToShow, row)
+    row += 1
+    
+    // Row 5: SMA 200 (3 Month Trend)
+    table.cell(t, 0, row, "SMA 200 (3 Month Trend)", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
+    table.merge_cells(t, 0, row, 3, row)
+    sma3MColor = sma200Trend3M == "Rising" ? color.green : sma200Trend3M == "Declining" ? color.red : color.white
+    sma3MText = sma200Trend3M + (na(sma200Pct3M) ? "" : " (" + (sma200Pct3M > 0 ? "+" : "") + str.tostring(sma200Pct3M, "#.#") + "%)")
+    table.cell(t, 4, row, sma3MText, bgcolor=RowBGColor, text_color=sma3MColor, text_size=TextSize)
+    table.merge_cells(t, 4, row, quartersToShow, row)
+    row += 1
+    
+    // === Row 6: Header with quarter dates (ascending order) ===
+    table.cell(t, 0, row, "METRIC", bgcolor=HeaderBGColor, text_color=color.white, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        idx = reverseIdx(i)
+        qDate = array.get(dates, idx)
+        qLabel = na(qDate) ? "Q" + str.tostring(i) : str.format("{0, date, MMM-yy}", qDate)
+        table.cell(t, i + 1, row, qLabel, bgcolor=HeaderBGColor, text_color=color.white, text_size=TextSize)
+    row += 1
+    
+    // === SECTION 2: GENERAL RESULTS ===
+    
+    // Row 7: EPS values
+    table.cell(t, 0, row, "EPS", bgcolor=RowBGColor, text_color=color.aqua, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        idx = reverseIdx(i)
+        table.cell(t, i + 1, row, formatVal(array.get(epsArr, idx)), bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
+    row += 1
+    
+    // Row 8: ROE
+    table.cell(t, 0, row, "ROE%", bgcolor=RowBGColor, text_color=color.orange, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        idx = reverseIdx(i)
+        roeVal = array.get(roeArr, idx)
+        table.cell(t, i + 1, row, formatVal(roeVal), bgcolor=RowBGColor, text_color=getROEColor(roeVal), text_size=TextSize)
+    row += 1
+    
+    // Row 9: D/E Ratio
+    table.cell(t, 0, row, "D/E", bgcolor=RowBGColor, text_color=color.fuchsia, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        idx = reverseIdx(i)
+        deVal = array.get(deArr, idx)
+        table.cell(t, i + 1, row, formatVal(deVal), bgcolor=RowBGColor, text_color=getDEColor(deVal), text_size=TextSize)
+    row += 1
+    
+    // === SECTION 3: SEASONAL (YoY) ===
+    
+    // Row 10: Seasonal Header
+    table.cell(t, 0, row, "YoY", bgcolor=SeasonalBG, text_color=color.white, text_size=TextSize)
+    for i = 1 to quartersToShow
+        table.cell(t, i, row, "", bgcolor=SeasonalBG, text_color=color.white, text_size=TextSize)
+    row += 1
+    
+    // Row 11: EPS YoY
+    table.cell(t, 0, row, "EPS", bgcolor=RowBGColor, text_color=color.yellow, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        idx = reverseIdx(i)
+        epsY = getYoYChange(epsArr, idx)
+        table.cell(t, i + 1, row, formatPct(epsY), bgcolor=RowBGColor, text_color=getGrowthColor(epsY), text_size=TextSize)
+    row += 1
+    
+    // Row 12: Revenue YoY
+    table.cell(t, 0, row, "Rev", bgcolor=RowBGColor, text_color=color.yellow, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        idx = reverseIdx(i)
+        revY = getYoYChange(salesArr, idx)
+        table.cell(t, i + 1, row, formatPct(revY), bgcolor=RowBGColor, text_color=getGrowthColor(revY), text_size=TextSize)
+    row += 1
+    
+    // === SECTION 4: NON-SEASONAL (QoQ) ===
+    
+    // Row 13: Non-Seasonal Header
+    table.cell(t, 0, row, "QoQ", bgcolor=NonSeasonalBG, text_color=color.white, text_size=TextSize)
+    for i = 1 to quartersToShow
+        table.cell(t, i, row, "", bgcolor=NonSeasonalBG, text_color=color.white, text_size=TextSize)
+    row += 1
+    
+    // Row 14: EPS QoQ
+    table.cell(t, 0, row, "EPS", bgcolor=RowBGColor, text_color=color.aqua, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        idx = reverseIdx(i)
+        epsQ = getQoQChange(epsArr, idx)
+        table.cell(t, i + 1, row, formatPct(epsQ), bgcolor=RowBGColor, text_color=getGrowthColor(epsQ), text_size=TextSize)
+    row += 1
+    
+    // Row 15: Revenue QoQ
+    table.cell(t, 0, row, "Rev", bgcolor=RowBGColor, text_color=color.aqua, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        idx = reverseIdx(i)
+        revQ = getQoQChange(salesArr, idx)
+        table.cell(t, i + 1, row, formatPct(revQ), bgcolor=RowBGColor, text_color=getGrowthColor(revQ), text_size=TextSize)
+
+// Dummy plot
+plot(na, display=display.none)
