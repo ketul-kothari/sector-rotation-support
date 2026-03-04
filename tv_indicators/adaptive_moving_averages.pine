@@ -1,30 +1,36 @@
-//@version=5
+//@version=6
 indicator("Adaptive Moving Averages", shorttitle="Adaptive MA", overlay=true)
 
 // ============================================
 // ADAPTIVE MOVING AVERAGE INDICATOR
 // ============================================
 // Automatically switches SMAs based on chart timeframe:
-//   Weekly / Monthly : SMA 4W, 10W, 30W, 40W
-//   Daily            : SMA 20D, 50D, 150D, 200D
-//   Intraday (any sub-daily) : scaled from daily bars using 375 min/session (NSE 9:15–15:30)
-//                               e.g. 75m (5 bars/day): 100, 250, 750, 1000  — exact
-//                               e.g.  1H (6.25 bars/day): 125, 313, 938, 1250
+//   Weekly / Monthly : SMA 4W, 10W, 30W, 40W  (on native weekly bars)
+//   Daily            : SMA 20D, 50D, 150D, 200D (on native daily bars)
+//   Intraday (any)   : fetches the TRUE daily SMAs via request.security so
+//                      they always match the daily chart exactly — works for
+//                      any intraday TF (75m, 1H, 30m, 15m, etc.) identically.
+//
+// WHY request.security for intraday:
+//   Computing SMA on intraday bars (e.g. 1000 × 75m bars) is NOT the same as
+//   SMA(200 daily closes) because intraday bars include intermediate prices,
+//   not end-of-day closes. request.security evaluates the SMA on actual daily
+//   closes, so the result is bit-exact to the daily chart.
 // ============================================
 
 // ================== SETTINGS ==================
 
 // Enable/Disable individual MAs
-show_ma1 = input.bool(true, "Show MA1 (4W / 20D / ~125H)", group="Visibility")
-show_ma2 = input.bool(true, "Show MA2 (10W / 50D / ~313H)", group="Visibility")
-show_ma3 = input.bool(true, "Show MA3 (30W / 150D / ~938H)", group="Visibility")
-show_ma4 = input.bool(true, "Show MA4 (40W / 200D / ~1250H)", group="Visibility")
+show_ma1 = input.bool(true, "Show MA1 (4W / 20D)", group="Visibility")
+show_ma2 = input.bool(true, "Show MA2 (10W / 50D)", group="Visibility")
+show_ma3 = input.bool(false, "Show MA3 (30W / 150D)", group="Visibility")
+show_ma4 = input.bool(true, "Show MA4 (40W / 200D)", group="Visibility")
 
 // Color settings
-color_ma1 = input.color(color.new(#f99601, 0), "MA1 Color (4W/20D/~125H)", group="Colors")
-color_ma2 = input.color(color.new(#0da134, 0), "MA2 Color (10W/50D/~313H)", group="Colors")
-color_ma3 = input.color(color.new(#b100d1, 0), "MA3 Color (30W/150D/~938H)", group="Colors")
-color_ma4 = input.color(color.new(#f32c1e, 0), "MA4 Color (40W/200D/~1250H)", group="Colors")
+color_ma1 = input.color(color.new(#f99601, 0), "MA1 Color (4W / 20D)", group="Colors")
+color_ma2 = input.color(color.new(#0da134, 0), "MA2 Color (10W / 50D)", group="Colors")
+color_ma3 = input.color(color.new(#b100d1, 0), "MA3 Color (30W / 150D)", group="Colors")
+color_ma4 = input.color(color.new(#f32c1e, 0), "MA4 Color (40W / 200D)", group="Colors")
 
 // Line width settings
 width_ma1 = input.int(1, "MA1 Line Width", minval=1, maxval=4, group="Line Styles")
@@ -32,51 +38,55 @@ width_ma2 = input.int(1, "MA2 Line Width", minval=1, maxval=4, group="Line Style
 width_ma3 = input.int(1, "MA3 Line Width", minval=1, maxval=4, group="Line Styles")
 width_ma4 = input.int(1, "MA4 Line Width", minval=1, maxval=4, group="Line Styles")
 
-// Advanced: Manual override
+// Advanced: Manual override — periods applied directly on current chart bars
 use_manual_override = input.bool(false, "Use Manual Period Override", group="Advanced")
-manual_period1 = input.int(20, "Manual MA1 Period", minval=1, group="Advanced")
-manual_period2 = input.int(50, "Manual MA2 Period", minval=1, group="Advanced")
+manual_period1 = input.int(20,  "Manual MA1 Period", minval=1, group="Advanced")
+manual_period2 = input.int(50,  "Manual MA2 Period", minval=1, group="Advanced")
 manual_period3 = input.int(150, "Manual MA3 Period", minval=1, group="Advanced")
 manual_period4 = input.int(200, "Manual MA4 Period", minval=1, group="Advanced")
 
 // ================== LOGIC ==================
 
-// Timeframe detection
 isWeeklyOrHigher = timeframe.isweekly or timeframe.ismonthly
-isIntraday       = timeframe.isintraday  // true for 1H, 2H, 4H, 15m, etc.
-// Daily: neither isWeeklyOrHigher nor isIntraday (timeframe.isdaily is true)
+isIntraday       = timeframe.isintraday
 
-// Intraday helper: convert a daily-period to an equivalent intraday bar count.
-// Uses 375 trading minutes/day (NSE session: 9:15–15:30).
-// Works for ANY sub-daily timeframe TradingView supports.
-// For 75m (multiplier=75, 5 bars/day): 20D→100, 50D→250, 150D→750, 200D→1000  (exact, no rounding)
-// For  1H (multiplier=60, 6.25 bars/day): 20D→125, 50D→313, 150D→938, 200D→1250
-// For 30m (multiplier=30): 20D→250, 50D→625, 150D→1875, 200D→2500
-intradayP(d) => math.max(1, int(math.round(d * 375.0 / timeframe.multiplier)))
+// ── Weekly / Monthly: SMA on native weekly bars ───────────────────────────────
+ma1_w = ta.sma(close, 4)
+ma2_w = ta.sma(close, 10)
+ma3_w = ta.sma(close, 30)
+ma4_w = ta.sma(close, 40)
 
-// Adaptive periods
-// Weekly: 4W, 10W, 30W, 40W  |  Daily: 20D, 50D, 150D, 200D  |  Intraday: scaled
-period1 = use_manual_override ? manual_period1 : isWeeklyOrHigher ? 4   : isIntraday ? intradayP(20)  : 20
-period2 = use_manual_override ? manual_period2 : isWeeklyOrHigher ? 10  : isIntraday ? intradayP(50)  : 50
-period3 = use_manual_override ? manual_period3 : isWeeklyOrHigher ? 30  : isIntraday ? intradayP(150) : 150
-period4 = use_manual_override ? manual_period4 : isWeeklyOrHigher ? 40  : isIntraday ? intradayP(200) : 200
+// ── Daily: SMA on native daily bars ──────────────────────────────────────────
+ma1_d = ta.sma(close, 20)
+ma2_d = ta.sma(close, 50)
+ma3_d = ta.sma(close, 150)
+ma4_d = ta.sma(close, 200)
 
-// Calculate SMAs
-ma1 = ta.sma(close, period1)
-ma2 = ta.sma(close, period2)
-ma3 = ta.sma(close, period3)
-ma4 = ta.sma(close, period4)
+// ── Intraday: fetch TRUE daily SMAs — matches daily chart bit-for-bit ─────────
+// lookahead_off uses the confirmed (closed) daily bar — no repainting.
+ma1_intra = request.security(syminfo.tickerid, "D", ta.sma(close, 20),  lookahead=barmerge.lookahead_off)
+ma2_intra = request.security(syminfo.tickerid, "D", ta.sma(close, 50),  lookahead=barmerge.lookahead_off)
+ma3_intra = request.security(syminfo.tickerid, "D", ta.sma(close, 150), lookahead=barmerge.lookahead_off)
+ma4_intra = request.security(syminfo.tickerid, "D", ta.sma(close, 200), lookahead=barmerge.lookahead_off)
+
+// ── Manual override: SMA directly on current chart bars ───────────────────────
+ma1_manual = ta.sma(close, manual_period1)
+ma2_manual = ta.sma(close, manual_period2)
+ma3_manual = ta.sma(close, manual_period3)
+ma4_manual = ta.sma(close, manual_period4)
+
+// ── Select active MA set based on timeframe ───────────────────────────────────
+ma1 = use_manual_override ? ma1_manual : isWeeklyOrHigher ? ma1_w : isIntraday ? ma1_intra : ma1_d
+ma2 = use_manual_override ? ma2_manual : isWeeklyOrHigher ? ma2_w : isIntraday ? ma2_intra : ma2_d
+ma3 = use_manual_override ? ma3_manual : isWeeklyOrHigher ? ma3_w : isIntraday ? ma3_intra : ma3_d
+ma4 = use_manual_override ? ma4_manual : isWeeklyOrHigher ? ma4_w : isIntraday ? ma4_intra : ma4_d
 
 // ================== PLOTTING ==================
 
-// Plot MAs with conditional visibility
-plot(show_ma1 ? ma1 : na, title="MA1 (4W/20D/~125H)",  color=color_ma1, linewidth=width_ma1)
-plot(show_ma2 ? ma2 : na, title="MA2 (10W/50D/~313H)", color=color_ma2, linewidth=width_ma2)
-plot(show_ma3 ? ma3 : na, title="MA3 (30W/150D/~938H)", color=color_ma3, linewidth=width_ma3)
-plot(show_ma4 ? ma4 : na, title="MA4 (40W/200D/~1250H)", color=color_ma4, linewidth=width_ma4)
-
-// ================== LABELS ==================
-// Label removed as per user request
+plot(show_ma1 ? ma1 : na, title="MA1 (4W / 20D)",  color=color_ma1, linewidth=width_ma1)
+plot(show_ma2 ? ma2 : na, title="MA2 (10W / 50D)", color=color_ma2, linewidth=width_ma2)
+plot(show_ma3 ? ma3 : na, title="MA3 (30W / 150D)", color=color_ma3, linewidth=width_ma3)
+plot(show_ma4 ? ma4 : na, title="MA4 (40W / 200D)", color=color_ma4, linewidth=width_ma4)
 
 // ================== ALERTS ==================
 
@@ -84,8 +94,8 @@ plot(show_ma4 ? ma4 : na, title="MA4 (40W/200D/~1250H)", color=color_ma4, linewi
 crossAboveMA4 = ta.crossover(close, ma4)
 crossBelowMA4 = ta.crossunder(close, ma4)
 
-alertcondition(crossAboveMA4, title="Price Crosses Above MA4", message="{{ticker}} crossed above MA4 (40W/200D/~1250H)")
-alertcondition(crossBelowMA4, title="Price Crosses Below MA4", message="{{ticker}} crossed below MA4 (40W/200D/~1250H)")
+alertcondition(crossAboveMA4, title="Price Crosses Above MA4", message="{{ticker}} crossed above MA4 (40W / 200D)")
+alertcondition(crossBelowMA4, title="Price Crosses Below MA4", message="{{ticker}} crossed below MA4 (40W / 200D)")
 
 // MA alignment (bullish = all MAs in order)
 bullishAlignment = ma1 > ma2 and ma2 > ma3 and ma3 > ma4
