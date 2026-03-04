@@ -34,12 +34,14 @@ DE_ID = 'DEBT_TO_EQUITY'
 
 // === Stock Info Data ===
 totalShares = request.financial(syminfo.tickerid, "TOTAL_SHARES_OUTSTANDING", "FY")
-marketCapCrores = (close * totalShares) / 10000000
+// Use daily close for all price comparisons (accurate on any chart timeframe)
+dailyClose = request.security(syminfo.tickerid, "D", close)
+marketCapCrores = (dailyClose * totalShares) / 10000000
 
 week52High = request.security(syminfo.tickerid, "D", ta.highest(high, 252))
 week52Low = request.security(syminfo.tickerid, "D", ta.lowest(low, 252))
-pctAbove52Low = ((close - week52Low) / week52Low) * 100
-pctBelow52High = ((week52High - close) / week52High) * 100
+pctAbove52Low = ((dailyClose - week52Low) / week52Low) * 100
+pctBelow52High = ((week52High - dailyClose) / week52High) * 100
 
 sma200 = request.security(syminfo.tickerid, "D", ta.sma(close, 200))
 sma150 = request.security(syminfo.tickerid, "D", ta.sma(close, 150))
@@ -52,10 +54,12 @@ sma200Trend1M = na(sma200) or na(sma200_1M) ? "N/A" : sma200 > sma200_1M ? "Risi
 sma200Trend3M = na(sma200) or na(sma200_3M) ? "N/A" : sma200 > sma200_3M ? "Rising" : "Declining"
 
 // Price distance from SMAs (daily)
-pricePctVsSma200 = not na(sma200) and sma200 > 0 ? ((close - sma200) / sma200) * 100 : na
-pricePctVsSma150 = not na(sma150) and sma150 > 0 ? ((close - sma150) / sma150) * 100 : na
-pricePctVsSma50  = not na(sma50)  and sma50  > 0 ? ((close - sma50)  / sma50)  * 100 : na
+pricePctVsSma200 = not na(sma200) and sma200 > 0 ? ((dailyClose - sma200) / sma200) * 100 : na
+pricePctVsSma150 = not na(sma150) and sma150 > 0 ? ((dailyClose - sma150) / sma150) * 100 : na
+pricePctVsSma50  = not na(sma50)  and sma50  > 0 ? ((dailyClose - sma50)  / sma50)  * 100 : na
 sma150PctVsSma200 = not na(sma150) and not na(sma200) and sma200 > 0 ? ((sma150 - sma200) / sma200) * 100 : na
+sma50PctVsSma150  = not na(sma50)  and not na(sma150) and sma150  > 0 ? ((sma50  - sma150)  / sma150)  * 100 : na
+sma50PctVsSma200  = not na(sma50)  and not na(sma200) and sma200  > 0 ? ((sma50  - sma200)  / sma200)  * 100 : na
 
 // === Minervini Trend Template Criteria ===
 // C1: Price at least 30% above 52-week low
@@ -65,14 +69,18 @@ sma150PctVsSma200 = not na(sma150) and not na(sma200) and sma200 > 0 ? ((sma150 
 // C5: 150-day SMA above 200-day SMA
 // C6: 200-day SMA trending up (1-month)
 // C7: Price above 50-day SMA
-c1_above52Low    = pctAbove52Low >= 30
-c2_below52High   = pctBelow52High <= 25
-c3_priceVsSma200 = not na(sma200) and close > sma200
-c4_priceVsSma150 = not na(sma150) and close > sma150
-c5_sma150VsSma200 = not na(sma150) and not na(sma200) and sma150 > sma200
-c6_sma200Rising  = sma200Trend1M == "Rising"
-c7_priceVsSma50  = not na(sma50)  and close > sma50
-templateScore = (c1_above52Low ? 1 : 0) + (c2_below52High ? 1 : 0) + (c3_priceVsSma200 ? 1 : 0) + (c4_priceVsSma150 ? 1 : 0) + (c5_sma150VsSma200 ? 1 : 0) + (c6_sma200Rising ? 1 : 0) + (c7_priceVsSma50 ? 1 : 0)
+// C8: 50-day SMA above both 150-day and 200-day SMA
+c1_above52Low      = pctAbove52Low >= 30
+c2_below52High     = pctBelow52High <= 25
+c3_priceVsSma200   = not na(sma200) and dailyClose > sma200
+c4_priceVsSma150   = not na(sma150) and dailyClose > sma150
+c5_sma150VsSma200  = not na(sma150) and not na(sma200) and sma150 > sma200
+c6_sma200Rising    = sma200Trend1M == "Rising"
+c7_priceVsSma50    = not na(sma50)  and dailyClose > sma50
+c8_sma50VsHigherSmas = not na(sma50) and not na(sma150) and not na(sma200) and sma50 > sma150 and sma50 > sma200
+c8a_sma50VsSma150    = not na(sma50) and not na(sma150) and sma50 > sma150
+c8b_sma50VsSma200    = not na(sma50) and not na(sma200) and sma50 > sma200
+templateScore = (c1_above52Low ? 1 : 0) + (c2_below52High ? 1 : 0) + (c3_priceVsSma200 ? 1 : 0) + (c4_priceVsSma150 ? 1 : 0) + (c5_sma150VsSma200 ? 1 : 0) + (c6_sma200Rising ? 1 : 0) + (c7_priceVsSma50 ? 1 : 0) + (c8_sma50VsHigherSmas ? 1 : 0)
 
 // === Data Arrays ===
 var array<int> dates = array.new_int(datasize)
@@ -197,21 +205,14 @@ if barstate.islast
     table.merge_cells(t, infoVal + 1, row, numCols - 1, row)
     row += 1
 
-    // Row 4: Price vs SMA200  [C3: price > SMA200]
-    table.cell(t, 0, row, "Price vs SMA200", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
+    // Row 4: Price vs SMA150 & SMA200  [C3 + C4]
+    priceVsSmaLbl = priceSmaText(pricePctVsSma150) + " / " + priceSmaText(pricePctVsSma200)
+    priceVsSmaColor = c3_priceVsSma200 and c4_priceVsSma150 ? color.green : c3_priceVsSma200 or c4_priceVsSma150 ? color.yellow : color.red
+    table.cell(t, 0, row, "Price vs SMA150/200", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
     table.merge_cells(t, 0, row, infoLbl, row)
-    table.cell(t, infoLbl + 1, row, priceSmaText(pricePctVsSma200), bgcolor=RowBGColor, text_color=c3_priceVsSma200 ? color.green : color.red, text_size=TextSize)
+    table.cell(t, infoLbl + 1, row, priceVsSmaLbl, bgcolor=RowBGColor, text_color=priceVsSmaColor, text_size=TextSize)
     table.merge_cells(t, infoLbl + 1, row, infoVal, row)
-    table.cell(t, infoVal + 1, row, passCell(c3_priceVsSma200) + " P>200", bgcolor=RowBGColor, text_color=passColor(c3_priceVsSma200), text_size=TextSize)
-    table.merge_cells(t, infoVal + 1, row, numCols - 1, row)
-    row += 1
-
-    // Row 5: Price vs SMA150  [C4: price > SMA150]
-    table.cell(t, 0, row, "Price vs SMA150", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
-    table.merge_cells(t, 0, row, infoLbl, row)
-    table.cell(t, infoLbl + 1, row, priceSmaText(pricePctVsSma150), bgcolor=RowBGColor, text_color=c4_priceVsSma150 ? color.green : color.red, text_size=TextSize)
-    table.merge_cells(t, infoLbl + 1, row, infoVal, row)
-    table.cell(t, infoVal + 1, row, passCell(c4_priceVsSma150) + " P>150", bgcolor=RowBGColor, text_color=passColor(c4_priceVsSma150), text_size=TextSize)
+    table.cell(t, infoVal + 1, row, passCell(c4_priceVsSma150) + "150 " + passCell(c3_priceVsSma200) + "200", bgcolor=RowBGColor, text_color=priceVsSmaColor, text_size=TextSize)
     table.merge_cells(t, infoVal + 1, row, numCols - 1, row)
     row += 1
 
@@ -224,7 +225,18 @@ if barstate.islast
     table.merge_cells(t, infoVal + 1, row, numCols - 1, row)
     row += 1
 
-    // Row 7: SMA150 vs SMA200  [C5: SMA150 > SMA200]
+    // Row 8: SMA50 vs SMA150 & SMA200  [C8: SMA50 > SMA150 AND SMA50 > SMA200]
+    sma50Lbl = na(sma50PctVsSma150) or na(sma50PctVsSma200) ? "N/A" : priceSmaText(sma50PctVsSma150) + " / " + priceSmaText(sma50PctVsSma200)
+    sma50VsSmaColor = c8a_sma50VsSma150 and c8b_sma50VsSma200 ? color.green : c8a_sma50VsSma150 or c8b_sma50VsSma200 ? color.yellow : color.red
+    table.cell(t, 0, row, "SMA50 vs SMA150/200", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
+    table.merge_cells(t, 0, row, infoLbl, row)
+    table.cell(t, infoLbl + 1, row, sma50Lbl, bgcolor=RowBGColor, text_color=sma50VsSmaColor, text_size=TextSize)
+    table.merge_cells(t, infoLbl + 1, row, infoVal, row)
+    table.cell(t, infoVal + 1, row, passCell(c8a_sma50VsSma150) + "150 " + passCell(c8b_sma50VsSma200) + "200", bgcolor=RowBGColor, text_color=sma50VsSmaColor, text_size=TextSize)
+    table.merge_cells(t, infoVal + 1, row, numCols - 1, row)
+    row += 1
+
+    // Row 9: SMA150 vs SMA200  [C5: SMA150 > SMA200]
     table.cell(t, 0, row, "SMA150 vs SMA200", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
     table.merge_cells(t, 0, row, infoLbl, row)
     table.cell(t, infoLbl + 1, row, priceSmaText(sma150PctVsSma200), bgcolor=RowBGColor, text_color=c5_sma150VsSma200 ? color.green : color.red, text_size=TextSize)
@@ -265,12 +277,12 @@ if barstate.islast
     row += 1
 
     // Row 11: Template Score
-    scoreColor = templateScore >= 7 ? GoodColor : templateScore >= 5 ? OkColor : BadColor
+    scoreColor = templateScore >= 8 ? GoodColor : templateScore >= 6 ? OkColor : BadColor
     table.cell(t, 0, row, "Template Score", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
     table.merge_cells(t, 0, row, infoLbl, row)
-    table.cell(t, infoLbl + 1, row, str.tostring(templateScore) + " / 7 criteria", bgcolor=RowBGColor, text_color=scoreColor, text_size=TextSize)
+    table.cell(t, infoLbl + 1, row, str.tostring(templateScore) + " / 8 criteria", bgcolor=RowBGColor, text_color=scoreColor, text_size=TextSize)
     table.merge_cells(t, infoLbl + 1, row, infoVal, row)
-    table.cell(t, infoVal + 1, row, templateScore >= 7 ? "✓ PASS" : templateScore >= 5 ? "~ PARTIAL" : "✗ FAIL", bgcolor=RowBGColor, text_color=scoreColor, text_size=TextSize)
+    table.cell(t, infoVal + 1, row, templateScore >= 8 ? "✓ PASS" : templateScore >= 6 ? "~ PARTIAL" : "✗ FAIL", bgcolor=RowBGColor, text_color=scoreColor, text_size=TextSize)
     table.merge_cells(t, infoVal + 1, row, numCols - 1, row)
     row += 1
     
