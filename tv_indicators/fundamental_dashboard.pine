@@ -174,13 +174,13 @@ reverseIdx(i) =>
     quartersToShow - 1 - i
 
 // === Create Table ===
-// Rows: InfoHeader(1) + InfoData(10) + QuarterHeader(1) + General(4) + YoYHeader(1) + YoYData(3) + QoQHeader(1) + QoQData(3) = 24
+// Rows: InfoHeader(1) + InfoData(11) + QuarterHeader(1) + General(4) + YoYHeader(1) + YoYData(3) + QoQHeader(1) + QoQData(3) = 25
 numCols = quartersToShow + 1
 // Info section 3-zone column splits: label | value | pass/fail
 infoLbl = math.floor(float(numCols - 1) / 3.0)          // label end col  (~2 for ncols=9)
 infoVal = math.floor(2.0 * float(numCols - 1) / 3.0)    // value end col  (~5 for ncols=9)
 // pass zone: infoVal+1 .. numCols-1
-var table t = table.new(tableY + '_' + tableX, numCols, 24, bgcolor=RowBGColor, frame_color=color.gray, border_color=color.gray, border_width=1)
+var table t = table.new(tableY + '_' + tableX, numCols, 25, bgcolor=RowBGColor, frame_color=color.gray, border_color=color.gray, border_width=1)
 
 // === Render Table ===
 if barstate.islast
@@ -265,17 +265,25 @@ if barstate.islast
     table.merge_cells(t, infoVal + 1, row, numCols - 1, row)
     row += 1
 
-    // Row 8: SMA200 1M & 3M Trend combined  [C6: 1M Rising]
+    // Row 8: SMA200 1-Month Trend  [C6: Rising]
     sma1MColor = sma200Trend1M == "Rising" ? color.green : sma200Trend1M == "Declining" ? color.red : color.white
-    sma3MColor = sma200Trend3M == "Rising" ? color.green : sma200Trend3M == "Declining" ? color.red : color.white
-    sma1MText = "1M: " + sma200Trend1M + (na(sma200Pct1M) ? "" : " (" + (sma200Pct1M > 0 ? "+" : "") + str.tostring(sma200Pct1M, "#.#") + "%)")
-    sma3MText = "  3M: " + sma200Trend3M + (na(sma200Pct3M) ? "" : " (" + (sma200Pct3M > 0 ? "+" : "") + str.tostring(sma200Pct3M, "#.#") + "%)")
-    sma200CombinedColor = c6_sma200Rising ? color.green : color.red
-    table.cell(t, 0, row, "SMA200 Trend", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
+    sma1MText = sma200Trend1M + (na(sma200Pct1M) ? "" : " (" + (sma200Pct1M > 0 ? "+" : "") + str.tostring(sma200Pct1M, "#.#") + "%)")
+    table.cell(t, 0, row, "SMA200 (1M)", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
     table.merge_cells(t, 0, row, infoLbl, row)
-    table.cell(t, infoLbl + 1, row, sma1MText + sma3MText, bgcolor=RowBGColor, text_color=sma200CombinedColor, text_size=TextSize)
+    table.cell(t, infoLbl + 1, row, sma1MText, bgcolor=RowBGColor, text_color=sma1MColor, text_size=TextSize)
     table.merge_cells(t, infoLbl + 1, row, infoVal, row)
-    table.cell(t, infoVal + 1, row, passCell(c6_sma200Rising) + " 1M Rising", bgcolor=RowBGColor, text_color=passColor(c6_sma200Rising), text_size=TextSize)
+    table.cell(t, infoVal + 1, row, passCell(c6_sma200Rising) + " Rising", bgcolor=RowBGColor, text_color=passColor(c6_sma200Rising), text_size=TextSize)
+    table.merge_cells(t, infoVal + 1, row, numCols - 1, row)
+    row += 1
+
+    // Row 9: SMA200 3-Month Trend  [informational]
+    sma3MColor = sma200Trend3M == "Rising" ? color.green : sma200Trend3M == "Declining" ? color.red : color.white
+    sma3MText = sma200Trend3M + (na(sma200Pct3M) ? "" : " (" + (sma200Pct3M > 0 ? "+" : "") + str.tostring(sma200Pct3M, "#.#") + "%)")
+    table.cell(t, 0, row, "SMA200 (3M)", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
+    table.merge_cells(t, 0, row, infoLbl, row)
+    table.cell(t, infoLbl + 1, row, sma3MText, bgcolor=RowBGColor, text_color=sma3MColor, text_size=TextSize)
+    table.merge_cells(t, infoLbl + 1, row, infoVal, row)
+    table.cell(t, infoVal + 1, row, "(info)", bgcolor=RowBGColor, text_color=FlatColor, text_size=TextSize)
     table.merge_cells(t, infoVal + 1, row, numCols - 1, row)
     row += 1
 
