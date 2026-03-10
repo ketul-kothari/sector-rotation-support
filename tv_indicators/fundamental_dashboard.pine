@@ -31,6 +31,7 @@ EPS_ID = 'EARNINGS_PER_SHARE'
 SALES_ID = 'TOTAL_REVENUE'
 ROE_ID = 'RETURN_ON_EQUITY'
 DE_ID = 'DEBT_TO_EQUITY'
+NI_ID  = 'NET_INCOME'
 
 // === Stock Info Data ===
 totalShares = request.financial(syminfo.tickerid, "TOTAL_SHARES_OUTSTANDING", "FY")
@@ -87,16 +88,18 @@ var array<int> dates = array.new_int(datasize)
 var array<float> epsArr = array.new_float(datasize)
 var array<float> salesArr = array.new_float(datasize)
 var array<float> roeArr = array.new_float(datasize)
-var array<float> deArr = array.new_float(datasize)
+var array<float> deArr    = array.new_float(datasize)
+var array<float> marginArr = array.new_float(datasize)
 
 // === Fetch Financial Data ===
 getData(id) =>
     request.financial(syminfo.tickerid, id, "FQ", barmerge.gaps_on, ignore_invalid_symbol=true)
 
-eps = getData(EPS_ID)
-sales = getData(SALES_ID)
-roe = getData(ROE_ID)
-de = getData(DE_ID)
+eps      = getData(EPS_ID)
+sales    = getData(SALES_ID)
+roe      = getData(ROE_ID)
+de       = getData(DE_ID)
+netIncome = getData(NI_ID)
 
 // === Update Arrays when new data arrives ===
 if not na(eps)
@@ -105,11 +108,13 @@ if not na(eps)
     array.unshift(salesArr, na(sales) ? na : sales / 10000000)
     array.unshift(roeArr, roe)
     array.unshift(deArr, de)
+    array.unshift(marginArr, na(netIncome) or na(sales) or sales == 0 ? na : (netIncome / sales) * 100)
     array.pop(dates)
     array.pop(epsArr)
     array.pop(salesArr)
     array.pop(roeArr)
     array.pop(deArr)
+    array.pop(marginArr)
 
 // === Helper Functions ===
 getQoQChange(arr, idx) =>
@@ -143,6 +148,21 @@ getROEColor(val) =>
 getDEColor(val) =>
     na(val) ? FlatColor : val <= 0.5 ? GoodColor : val <= 1 ? OkColor : BadColor
 
+// Margin pp-change helpers (absolute percentage-point delta, not % of %)
+getMarginPpChange(arr, idx, offset) =>
+    val = array.get(arr, idx)
+    cmp = array.get(arr, idx + offset)
+    na(val) or na(cmp) ? na : val - cmp
+
+formatPp(val) =>
+    na(val) ? "-" : (val > 0 ? "+" : "") + str.tostring(val, "#.##") + "pp"
+
+getMarginPpColor(pp) =>
+    na(pp) ? FlatColor : pp > 0.5 ? UpColor : pp < -0.5 ? DownColor : FlatColor
+
+formatMargin(val) =>
+    na(val) ? "-" : str.tostring(val, "#.##") + "%"
+
 getCapCat(val) =>
     na(val) ? "" : val >= 105000 ? "Large" : val >= 34700 ? "Mid" : val >= 1000 ? "Small" : "Micro"
 
@@ -154,13 +174,13 @@ reverseIdx(i) =>
     quartersToShow - 1 - i
 
 // === Create Table ===
-// Rows: InfoHeader(1) + InfoData(11) + QuarterHeader(1) + General(3) + YoYHeader(1) + YoYData(2) + QoQHeader(1) + QoQData(2) = 22
+// Rows: InfoHeader(1) + InfoData(10) + QuarterHeader(1) + General(4) + YoYHeader(1) + YoYData(3) + QoQHeader(1) + QoQData(3) = 24
 numCols = quartersToShow + 1
 // Info section 3-zone column splits: label | value | pass/fail
 infoLbl = math.floor(float(numCols - 1) / 3.0)          // label end col  (~2 for ncols=9)
 infoVal = math.floor(2.0 * float(numCols - 1) / 3.0)    // value end col  (~5 for ncols=9)
 // pass zone: infoVal+1 .. numCols-1
-var table t = table.new(tableY + '_' + tableX, numCols, 22, bgcolor=RowBGColor, frame_color=color.gray, border_color=color.gray, border_width=1)
+var table t = table.new(tableY + '_' + tableX, numCols, 24, bgcolor=RowBGColor, frame_color=color.gray, border_color=color.gray, border_width=1)
 
 // === Render Table ===
 if barstate.islast
@@ -245,25 +265,17 @@ if barstate.islast
     table.merge_cells(t, infoVal + 1, row, numCols - 1, row)
     row += 1
 
-    // Row 8: SMA200 1-Month Trend  [C6: Rising]
-    table.cell(t, 0, row, "SMA200 (1M Trend)", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
-    table.merge_cells(t, 0, row, infoLbl, row)
+    // Row 8: SMA200 1M & 3M Trend combined  [C6: 1M Rising]
     sma1MColor = sma200Trend1M == "Rising" ? color.green : sma200Trend1M == "Declining" ? color.red : color.white
-    sma1MText = sma200Trend1M + (na(sma200Pct1M) ? "" : " (" + (sma200Pct1M > 0 ? "+" : "") + str.tostring(sma200Pct1M, "#.#") + "%)")
-    table.cell(t, infoLbl + 1, row, sma1MText, bgcolor=RowBGColor, text_color=sma1MColor, text_size=TextSize)
-    table.merge_cells(t, infoLbl + 1, row, infoVal, row)
-    table.cell(t, infoVal + 1, row, passCell(c6_sma200Rising) + " Rising", bgcolor=RowBGColor, text_color=passColor(c6_sma200Rising), text_size=TextSize)
-    table.merge_cells(t, infoVal + 1, row, numCols - 1, row)
-    row += 1
-
-    // Row 9: SMA200 3-Month Trend  [informational]
-    table.cell(t, 0, row, "SMA200 (3M Trend)", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
-    table.merge_cells(t, 0, row, infoLbl, row)
     sma3MColor = sma200Trend3M == "Rising" ? color.green : sma200Trend3M == "Declining" ? color.red : color.white
-    sma3MText = sma200Trend3M + (na(sma200Pct3M) ? "" : " (" + (sma200Pct3M > 0 ? "+" : "") + str.tostring(sma200Pct3M, "#.#") + "%)")
-    table.cell(t, infoLbl + 1, row, sma3MText, bgcolor=RowBGColor, text_color=sma3MColor, text_size=TextSize)
+    sma1MText = "1M: " + sma200Trend1M + (na(sma200Pct1M) ? "" : " (" + (sma200Pct1M > 0 ? "+" : "") + str.tostring(sma200Pct1M, "#.#") + "%)")
+    sma3MText = "  3M: " + sma200Trend3M + (na(sma200Pct3M) ? "" : " (" + (sma200Pct3M > 0 ? "+" : "") + str.tostring(sma200Pct3M, "#.#") + "%)")
+    sma200CombinedColor = c6_sma200Rising ? color.green : color.red
+    table.cell(t, 0, row, "SMA200 Trend", bgcolor=RowBGColor, text_color=color.white, text_size=TextSize)
+    table.merge_cells(t, 0, row, infoLbl, row)
+    table.cell(t, infoLbl + 1, row, sma1MText + sma3MText, bgcolor=RowBGColor, text_color=sma200CombinedColor, text_size=TextSize)
     table.merge_cells(t, infoLbl + 1, row, infoVal, row)
-    table.cell(t, infoVal + 1, row, "(info)", bgcolor=RowBGColor, text_color=FlatColor, text_size=TextSize)
+    table.cell(t, infoVal + 1, row, passCell(c6_sma200Rising) + " 1M Rising", bgcolor=RowBGColor, text_color=passColor(c6_sma200Rising), text_size=TextSize)
     table.merge_cells(t, infoVal + 1, row, numCols - 1, row)
     row += 1
 
@@ -319,6 +331,15 @@ if barstate.islast
         deVal = array.get(deArr, idx)
         table.cell(t, i + 1, row, formatVal(deVal), bgcolor=RowBGColor, text_color=getDEColor(deVal), text_size=TextSize)
     row += 1
+
+    // Row 14: Net Margin (raw %)
+    table.cell(t, 0, row, "Margin%", bgcolor=RowBGColor, text_color=color.new(color.orange, 20), text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        idx = reverseIdx(i)
+        mVal = array.get(marginArr, idx)
+        mColor = na(mVal) ? FlatColor : mVal >= 15 ? GoodColor : mVal >= 5 ? OkColor : BadColor
+        table.cell(t, i + 1, row, formatMargin(mVal), bgcolor=RowBGColor, text_color=mColor, text_size=TextSize)
+    row += 1
     
     // === SECTION 3: SEASONAL (YoY) ===
     
@@ -337,11 +358,19 @@ if barstate.islast
     row += 1
     
     // Row 16: Revenue YoY
-    table.cell(t, 0, row, "Rev", bgcolor=RowBGColor, text_color=color.yellow, text_size=TextSize)
+    table.cell(t, 0, row, "Sales", bgcolor=RowBGColor, text_color=color.yellow, text_size=TextSize)
     for i = 0 to quartersToShow - 1
         idx = reverseIdx(i)
         revY = getYoYChange(salesArr, idx)
         table.cell(t, i + 1, row, formatPct(revY), bgcolor=RowBGColor, text_color=getGrowthColor(revY), text_size=TextSize)
+    row += 1
+
+    // Row 17: Margin YoY (pp change vs same quarter last year)
+    table.cell(t, 0, row, "Margin", bgcolor=RowBGColor, text_color=color.yellow, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        idx = reverseIdx(i)
+        mYoY = getMarginPpChange(marginArr, idx, 4)
+        table.cell(t, i + 1, row, formatPp(mYoY), bgcolor=RowBGColor, text_color=getMarginPpColor(mYoY), text_size=TextSize)
     row += 1
     
     // === SECTION 4: NON-SEASONAL (QoQ) ===
@@ -361,11 +390,19 @@ if barstate.islast
     row += 1
     
     // Row 19: Revenue QoQ
-    table.cell(t, 0, row, "Rev", bgcolor=RowBGColor, text_color=color.aqua, text_size=TextSize)
+    table.cell(t, 0, row, "Sales", bgcolor=RowBGColor, text_color=color.aqua, text_size=TextSize)
     for i = 0 to quartersToShow - 1
         idx = reverseIdx(i)
         revQ = getQoQChange(salesArr, idx)
         table.cell(t, i + 1, row, formatPct(revQ), bgcolor=RowBGColor, text_color=getGrowthColor(revQ), text_size=TextSize)
+    row += 1
+
+    // Row 20: Margin QoQ (pp change vs prior quarter)
+    table.cell(t, 0, row, "Margin", bgcolor=RowBGColor, text_color=color.aqua, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        idx = reverseIdx(i)
+        mQoQ = getMarginPpChange(marginArr, idx, 1)
+        table.cell(t, i + 1, row, formatPp(mQoQ), bgcolor=RowBGColor, text_color=getMarginPpColor(mQoQ), text_size=TextSize)
 
 // Dummy plot
 plot(na, display=display.none)
