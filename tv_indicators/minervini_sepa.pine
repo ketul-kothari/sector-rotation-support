@@ -1,0 +1,522 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Minervini SEPA Dashboard – Trend Template + Full Fundamentals
+
+//@version=6
+indicator("Minervini SEPA Dashboard", overlay=true, max_labels_count=100)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INPUTS
+// ═══════════════════════════════════════════════════════════════════════════════
+quartersToShow = input.int(4,   'Quarters to Display', minval=4, maxval=8)
+tableY         = input.string('top',   'Vertical',   options=['top','middle','bottom'])
+tableX         = input.string('right', 'Horizontal', options=['left','center','right'])
+TextSize       = input.string('tiny',  'Text Size',  options=['tiny','small','normal'])
+showLabels     = input.bool(false, 'Show Chart Labels at Earnings Bars')
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════════════════════════════════════
+HeaderBG   = color.new(#1a365d, 5)
+RowBG      = color.new(#0d1117, 10)
+TrendBG    = color.new(#0f2040, 10)
+SeasonalBG = color.new(color.orange, 60)
+AnnualBG   = color.new(#2d1b4e, 15)
+Code33BG   = color.new(color.orange, 0)
+
+UpColor   = color.lime
+DownColor = color.red
+FlatColor = color.gray
+GoodColor = color.lime
+OkColor   = color.yellow
+BadColor  = color.red
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PRICE STRUCTURE & SMAs  (always on daily data)
+// ═══════════════════════════════════════════════════════════════════════════════
+dailyClose  = request.security(syminfo.tickerid, "D", close)
+sma200      = request.security(syminfo.tickerid, "D", ta.sma(close, 200))
+sma150      = request.security(syminfo.tickerid, "D", ta.sma(close, 150))
+sma50       = request.security(syminfo.tickerid, "D", ta.sma(close, 50))
+sma200_1M   = request.security(syminfo.tickerid, "D", ta.sma(close[21], 200))
+week52High  = request.security(syminfo.tickerid, "D", ta.highest(high, 252))
+week52Low   = request.security(syminfo.tickerid, "D", ta.lowest(low,  252))
+totalShares = request.financial(syminfo.tickerid, "TOTAL_SHARES_OUTSTANDING", "FY")
+mcapCr      = (dailyClose * totalShares) / 10000000
+
+pctAbove52Low  = (dailyClose - week52Low)  / week52Low  * 100
+pctBelow52High = (week52High - dailyClose) / week52High * 100
+
+pricePctSma50   = not na(sma50)  and sma50  > 0 ? (dailyClose - sma50)  / sma50  * 100 : na
+pricePctSma150  = not na(sma150) and sma150 > 0 ? (dailyClose - sma150) / sma150 * 100 : na
+pricePctSma200  = not na(sma200) and sma200 > 0 ? (dailyClose - sma200) / sma200 * 100 : na
+sma150PctSma200 = not na(sma150) and not na(sma200) and sma200 > 0 ? (sma150 - sma200) / sma200 * 100 : na
+sma50PctSma150  = not na(sma50)  and not na(sma150) and sma150 > 0 ? (sma50  - sma150) / sma150 * 100 : na
+sma50PctSma200  = not na(sma50)  and not na(sma200) and sma200 > 0 ? (sma50  - sma200) / sma200 * 100 : na
+// C8 display: show the weaker (binding) margin – whichever of SMA150 or SMA200 SMA50 is closer to
+sma50WeakerPct  = na(sma50PctSma150) or na(sma50PctSma200) ? na : math.min(sma50PctSma150, sma50PctSma200)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TREND TEMPLATE CRITERIA  (Minervini's 8 rules)
+// ═══════════════════════════════════════════════════════════════════════════════
+// C1: Current price ≥ 30% above 52-week low
+// C2: Current price within 25% of 52-week high
+// C3: Current price above 200-day SMA
+// C4: Current price above 150-day SMA
+// C5: 150-day SMA above 200-day SMA
+// C6: 200-day SMA is rising (vs 1 month ago)
+// C7: Current price above 50-day SMA
+// C8: 50-day SMA above both 150-day and 200-day SMA
+c1 = pctAbove52Low  >= 30
+c2 = pctBelow52High <= 25
+c3 = not na(sma200) and dailyClose > sma200
+c4 = not na(sma150) and dailyClose > sma150
+c5 = not na(sma150) and not na(sma200) and sma150 > sma200
+c6 = not na(sma200) and not na(sma200_1M) and sma200 > sma200_1M
+c7  = not na(sma50)  and dailyClose > sma50
+// C8 has TWO sub-conditions – each shown on its own row
+c8a = not na(sma50)  and not na(sma150) and sma50 > sma150   // SMA50 > SMA150
+c8b = not na(sma50)  and not na(sma200) and sma50 > sma200   // SMA50 > SMA200
+c8  = c8a and c8b
+
+templateScore = (c1?1:0)+(c2?1:0)+(c3?1:0)+(c4?1:0)+(c5?1:0)+(c6?1:0)+(c7?1:0)+(c8?1:0)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FINANCIAL DATA  (quarterly + annual + earnings surprise)
+// ═══════════════════════════════════════════════════════════════════════════════
+getFQ(id) =>
+    request.financial(syminfo.tickerid, id, "FQ", barmerge.gaps_on, ignore_invalid_symbol=true)
+
+eps    = getFQ('EARNINGS_PER_SHARE')
+sales  = getFQ('TOTAL_REVENUE')
+netInc = getFQ('NET_INCOME')
+roe    = getFQ('RETURN_ON_EQUITY')
+de     = getFQ('DEBT_TO_EQUITY')
+
+// Annual EPS (FY) – used for 3-year consecutive growth check
+annEps = request.financial(syminfo.tickerid, 'EARNINGS_PER_SHARE', "FY", barmerge.gaps_on, ignore_invalid_symbol=true)
+
+// Earnings surprise – from TradingView earnings calendar (separate from request.financial)
+// NO barmerge.gaps_on here: we want the values to carry forward to FQ bars so they stay
+// aligned with the quarterly array update below. On a FQ financial bar, epsAct/epsEst will
+// hold the most recently published earnings calendar value for that same quarter.
+epsAct  = request.earnings(syminfo.tickerid, earnings.actual,   ignore_invalid_symbol=true)
+epsEst  = request.earnings(syminfo.tickerid, earnings.estimate, ignore_invalid_symbol=true)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ARRAYS  (newest at index 0, oldest at index datasize-1)
+// ═══════════════════════════════════════════════════════════════════════════════
+// datasize = quartersToShow + 6 ensures enough buffer for:
+//   - YoY comparisons  (+4 quarters)
+//   - 3-quarter acceleration check  (+3 on top of YoY)
+datasize = quartersToShow + 6
+
+var array<int>   qDates   = array.new_int(datasize,   0)
+var array<float> epsArr   = array.new_float(datasize, na)
+var array<float> salesArr = array.new_float(datasize, na)  // in Crores
+var array<float> margArr  = array.new_float(datasize, na)  // net margin %
+var array<float> roeArr   = array.new_float(datasize, na)
+var array<float> deArr    = array.new_float(datasize, na)
+
+var array<float> annArr   = array.new_float(5, na)         // last 5 FY EPS (5th used as prior-year base for oldest displayed growth)
+var array<int>   annDates = array.new_int(5, 0)            // FY report dates (for year labels)
+var array<float> surprArr = array.new_float(datasize, na)  // EPS surprise % (actual vs estimate)
+
+// ── Update quarterly arrays on every new earnings bar ─────────────────────────
+if not na(eps)
+    _margin = na(netInc) or na(sales) or sales == 0 ? na : (netInc / sales) * 100
+    // Surprise: epsAct/epsEst carry forward (no gaps_on), so on FQ bars they reflect the same quarter
+    _surp   = na(epsAct) or na(epsEst) or epsEst == 0 ? na : (epsAct - epsEst) / math.abs(epsEst) * 100
+
+    array.unshift(qDates,   time)
+    array.unshift(epsArr,   eps)
+    array.unshift(salesArr, na(sales) ? na : sales / 10000000)
+    array.unshift(margArr,  _margin)
+    array.unshift(roeArr,   roe)
+    array.unshift(deArr,    de)
+    array.unshift(surprArr, _surp)
+
+    array.pop(qDates)
+    array.pop(epsArr)
+    array.pop(salesArr)
+    array.pop(margArr)
+    array.pop(roeArr)
+    array.pop(deArr)
+    array.pop(surprArr)
+
+// ── Update annual array on every new FY report ────────────────────────────────
+if not na(annEps)
+    array.unshift(annArr, annEps)
+    array.unshift(annDates, time)
+    array.pop(annArr)
+    array.pop(annDates)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+// YoY change at array index idx (compares to idx+4, i.e. same quarter last year)
+yoyChg(arr, idx) =>
+    v = array.get(arr, idx)
+    c = idx + 4 < array.size(arr) ? array.get(arr, idx + 4) : na
+    na(v) or na(c) or c == 0 ? na : (v - c) / math.abs(c) * 100
+
+// Percentage-point change (for margin – avoids compound % error)
+ppChg(arr, idx, offset) =>
+    v = array.get(arr, idx)
+    c = idx + offset < array.size(arr) ? array.get(arr, idx + offset) : na
+    na(v) or na(c) ? na : v - c
+
+// EPS acceleration at index idx: YoY growth higher than the quarter before it
+epsAccel(idx) =>
+    g0 = yoyChg(epsArr, idx)
+    g1 = yoyChg(epsArr, idx + 1)
+    not na(g0) and not na(g1) and g0 > g1
+
+salesAccel(idx) =>
+    g0 = yoyChg(salesArr, idx)
+    g1 = yoyChg(salesArr, idx + 1)
+    not na(g0) and not na(g1) and g0 > g1
+
+// Margin QoQ expansion (raw pp, not %)
+marginExpand(idx) =>
+    pp = ppChg(margArr, idx, 1)
+    not na(pp) and pp > 0
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+fmtPct(v) =>
+    na(v) ? "-" : (v >= 0 ? "+" : "") + str.tostring(math.round(v)) + "%"
+fmtPp(v) =>
+    na(v) ? "-" : (v >= 0 ? "+" : "") + str.tostring(v, "#.##") + "pp"
+fmtVal(v) =>
+    na(v) ? "-" : str.tostring(v, "#.##")
+fmtSma(v) =>
+    na(v) ? "N/A" : (v >= 0 ? "+" : "") + str.tostring(v, "#.#") + "%"
+
+// ── Color functions ───────────────────────────────────────────────────────────
+// growthColor: >=40% bright lime | >=20% lime | >=0 green | >-10 orange | red
+growthColor(v) =>
+    na(v) ? FlatColor : v >= 40 ? color.lime : v >= 20 ? color.new(color.lime, 30) : v > 0 ? color.green : v > -10 ? color.orange : DownColor
+
+passCell(p)  => p ? "✓" : "✗"
+passColor(p) => p ? GoodColor : BadColor
+
+getRoeColor(v)    => na(v) ? FlatColor : v >= 20 ? GoodColor : v >= 15 ? OkColor : BadColor
+getDeColor(v)     => na(v) ? FlatColor : v <= 0.5 ? GoodColor : v <= 1.0 ? OkColor : BadColor
+getMarginColor(v) => na(v) ? FlatColor : v >= 15 ? GoodColor : v >= 5  ? OkColor : BadColor
+getCapCat(v) =>
+    na(v) ? "" : v >= 105000 ? "Large" : v >= 34700 ? "Mid" : v >= 1000 ? "Small" : "Micro"
+
+fmtMCap(v) =>
+    na(v) ? "N/A" : v >= 100000 ? str.tostring(v / 100000, "#.##") + " L Cr" :
+             v >= 1000 ? str.tostring(v / 1000, "#.##") + " K Cr" :
+             str.tostring(v, "#.##") + " Cr"
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CHART LABELS  (fire at each earnings bar = every time eps is not na)
+// ═══════════════════════════════════════════════════════════════════════════════
+// Note: these run at each earnings bar so the arrays reflect that quarter's
+//       cumulative state – giving accurate historical signals on the chart.
+if showLabels and not na(eps)
+    _epsYoY0   = yoyChg(epsArr, 0)
+    _salesYoY0 = yoyChg(salesArr, 0)
+    _marg0     = array.get(margArr, 0)
+
+    // Acceleration / expansion flags
+    _ea0 = epsAccel(0)
+    _ea1 = epsAccel(1)
+    _ea2 = epsAccel(2)
+    _sa0 = salesAccel(0)
+    _sa1 = salesAccel(1)
+    _sa2 = salesAccel(2)
+    _me0 = marginExpand(0)
+    _me1 = marginExpand(1)
+    _me2 = marginExpand(2)
+    _code33      = _ea0 and _ea1 and _ea2 and _sa0 and _sa1 and _sa2 and _me0 and _me1 and _me2
+    _epsAccel2   = _ea0 and _ea1
+    _salesAccel2 = _sa0 and _sa1
+
+    // ── Line 1: EPS YoY% | Sales YoY% | Margin%  (▲/↑ appended when accelerating/expanding) ──
+    _epsStr   = "EPS "  + fmtPct(_epsYoY0)   + (_ea0 ? "▲" : "")
+    _salesStr = "Sls "  + fmtPct(_salesYoY0) + (_sa0 ? "▲" : "")
+    _margStr  = "Mgn "  + (na(_marg0) ? "-" : str.tostring(_marg0, "#.#") + "%") + (_me0 ? "↑" : "")
+    _dataLine = _epsStr + "  " + _salesStr + "  " + _margStr
+
+    // ── Line 2: signal badges (shown only when at least one condition fires) ──
+    _b1  = _code33                          ? "👑 CODE33"  : ""
+    _b2  = not _code33 and _epsAccel2       ? "🚀 EPS▲▲"  : ""
+    _b3  = not _code33 and _salesAccel2     ? "📊 Sls▲▲"  : ""
+    _sep12 = str.length(_b1) > 0 and str.length(_b2) > 0 ? "  " : ""
+    _sep23 = str.length(_b1) + str.length(_b2) > 0 and str.length(_b3) > 0 ? "  " : ""
+    _badges = _b1 + _sep12 + _b2 + _sep23 + _b3
+
+    _labelTxt   = _dataLine + (str.length(_badges) > 0 ? "\n" + _badges : "")
+    _labelColor = _code33       ? color.orange :
+                  (_epsAccel2 or _salesAccel2) ? color.new(color.teal, 30) :
+                  color.new(color.gray, 50)
+    _textColor  = _code33 ? color.black : color.white
+
+    label.new(bar_index, low, _labelTxt, style=label.style_label_up,
+         color=_labelColor, textcolor=_textColor, size=size.small)
+
+// Annual EPS consecutive growth label (fires when new FY report arrives)
+if showLabels and not na(annEps)
+    _a0b = array.get(annArr, 0)
+    _a1b = array.get(annArr, 1)
+    _a2b = array.get(annArr, 2)
+    _annConsec = not na(_a0b) and not na(_a1b) and not na(_a2b) and _a1b != 0 and _a2b != 0 and _a0b > _a1b and _a1b > _a2b
+    if _annConsec
+        label.new(bar_index, high, "📈 Ann EPS+", style=label.style_label_down, color=color.new(color.blue, 20), textcolor=color.white, size=size.small)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE
+// numCols = quartersToShow + 1  (label col + one col per quarter)
+// totalRows = 26
+//   Rows  0-1 :  Market cap + Trend score header
+//   Rows  2-10:  9 individual trend criteria (C8 split: SMA50>SMA150, SMA50>SMA200)
+//   Rows 11-25:  Fundamentals
+// ═══════════════════════════════════════════════════════════════════════════════
+numCols   = quartersToShow + 1
+totalRows = 26
+
+var table t = table.new(tableY + '_' + tableX, numCols, totalRows,
+     bgcolor=RowBG, frame_color=color.gray, border_color=color.gray, border_width=1)
+
+// ── Reusable: render one full-width merged row ─────────────────────────────────
+fullRow(r, txt, bg, tc) =>
+    table.cell(t, 0, r, txt, bgcolor=bg, text_color=tc, text_size=TextSize, text_halign=text.align_left)
+    table.merge_cells(t, 0, r, numCols - 1, r)
+
+// ── Reusable: one trend criterion per row ─────────────────────────────────────
+// Layout: [ label (col 0) | value in pass/fail color (cols 1..numCols-2 merged) | ✓/✗ (last col) ]
+singleCritRow(r, lbl, val, isPass) =>
+    cP = passColor(isPass)
+    table.cell(t, 0,           r, lbl, bgcolor=TrendBG, text_color=color.white, text_size=TextSize, text_halign=text.align_left)
+    table.cell(t, 1,           r, val, bgcolor=TrendBG, text_color=cP,          text_size=TextSize, text_halign=text.align_center)
+    table.merge_cells(t, 1,    r, numCols - 2, r)
+    table.cell(t, numCols - 1, r, passCell(isPass), bgcolor=TrendBG, text_color=cP, text_size=TextSize)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RENDER  (only on the last bar to avoid per-bar overhead)
+// ═══════════════════════════════════════════════════════════════════════════════
+if barstate.islast
+    row = 0
+
+    // ── Row 0: Market Cap ──────────────────────────────────────────────────────
+    // Row 0
+    mcapTxt = "Mkt Cap:  " + fmtMCap(mcapCr) + "  (" + getCapCat(mcapCr) + ")"
+    fullRow(row, mcapTxt, HeaderBG, color.white)
+    row += 1
+
+    // ── Row 1: Trend Template score header ────────────────────────────────────
+    // Row 1
+    _scoreColor = templateScore == 8 ? GoodColor : templateScore >= 6 ? OkColor : BadColor
+    _scoreTxt   = "Trend Template  " + str.tostring(templateScore) + "/8  " +
+                  (templateScore == 8 ? "✓ PASS" : templateScore >= 6 ? "⚠ PARTIAL" : "✗ FAIL")
+    fullRow(row, _scoreTxt, HeaderBG, _scoreColor)
+    row += 1
+
+    // ── Rows 2-10: Individual trend template criteria (one per row) ──────────────
+    // Row 2 – C1: Price ≥30% above 52-week low
+    singleCritRow(row, "52wk Low ≥30%",  "+" + str.tostring(pctAbove52Low,  "#.#") + "%", c1)
+    row += 1
+    // Row 3 – C2: Price within 25% of 52-week high
+    singleCritRow(row, "52wk High ≤25%", "-" + str.tostring(pctBelow52High, "#.#") + "%", c2)
+    row += 1
+    // Row 4 – C3: Price above 200-day SMA
+    singleCritRow(row, "Price > SMA200",  fmtSma(pricePctSma200), c3)
+    row += 1
+    // Row 5 – C4: Price above 150-day SMA
+    singleCritRow(row, "Price > SMA150",  fmtSma(pricePctSma150), c4)
+    row += 1
+    // Row 6 – C5: 150-day SMA above 200-day SMA
+    singleCritRow(row, "SMA150 > SMA200", fmtSma(sma150PctSma200), c5)
+    row += 1
+    // Row 7 – C6: 200-day SMA trending upward
+    singleCritRow(row, "SMA200 Rising",   c6 ? "Rising (↑)" : "Declining (↓)", c6)
+    row += 1
+    // Row 8 – C7: Price above 50-day SMA
+    singleCritRow(row, "Price > SMA50",   fmtSma(pricePctSma50), c7)
+    row += 1
+    // Row 9 – C8a: 50-day SMA above 150-day SMA  (sub-condition 1 of 2)
+    singleCritRow(row, "SMA50 > SMA150",  fmtSma(sma50PctSma150), c8a)
+    row += 1
+    // Row 10 – C8b: 50-day SMA above 200-day SMA  (sub-condition 2 of 2)
+    singleCritRow(row, "SMA50 > SMA200",  fmtSma(sma50PctSma200), c8b)
+    row += 1
+
+    // ── Row 11: Fundamentals section header ───────────────────────────────────
+    // Row 11
+    fullRow(row, "FUNDAMENTALS  (Minervini SEPA)", HeaderBG, color.white)
+    row += 1
+
+    // ── Row 7: Quarter date headers ───────────────────────────────────────────
+    // Row 7
+    table.cell(t, 0, row, "METRIC", bgcolor=HeaderBG, text_color=color.white, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        _idx  = quartersToShow - 1 - i       // newest shown = smallest index
+        _qd   = array.get(qDates, _idx)
+        _qlbl = na(_qd) or _qd == 0 ? "Q" + str.tostring(i + 1) : str.format("{0, date, MMM-yy}", _qd)
+        table.cell(t, i + 1, row, _qlbl, bgcolor=HeaderBG, text_color=color.white, text_size=TextSize)
+    row += 1
+
+    // ── Row 8: Net Margin % ───────────────────────────────────────────────────
+    // Row 8
+    table.cell(t, 0, row, "Margin%", bgcolor=RowBG, text_color=color.orange, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        _idx = quartersToShow - 1 - i
+        _mv  = array.get(margArr, _idx)
+        table.cell(t, i + 1, row, fmtVal(_mv) + (na(_mv) ? "" : "%"), bgcolor=RowBG, text_color=getMarginColor(_mv), text_size=TextSize)
+    row += 1
+
+    // ── Row 9: ROE % ──────────────────────────────────────────────────────────
+    // Row 9
+    table.cell(t, 0, row, "ROE%", bgcolor=RowBG, text_color=color.orange, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        _idx = quartersToShow - 1 - i
+        _rv  = array.get(roeArr, _idx)
+        table.cell(t, i + 1, row, fmtVal(_rv), bgcolor=RowBG, text_color=getRoeColor(_rv), text_size=TextSize)
+    row += 1
+
+    // ── Row 10: Debt / Equity ─────────────────────────────────────────────────
+    // Row 10
+    table.cell(t, 0, row, "D/E", bgcolor=RowBG, text_color=color.fuchsia, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        _idx = quartersToShow - 1 - i
+        _dv  = array.get(deArr, _idx)
+        table.cell(t, i + 1, row, fmtVal(_dv), bgcolor=RowBG, text_color=getDeColor(_dv), text_size=TextSize)
+    row += 1
+
+    // ── Row 11: YoY section header ────────────────────────────────────────────
+    // Row 11 – Minervini requires >=20% YoY; acceleration (▲) is the edge signal
+    fullRow(row, "YoY Growth  (Minervini min: EPS & Sales ≥20%  |  ▲ = accelerating)", SeasonalBG, color.white)
+    row += 1
+
+    // ── Row 12: EPS YoY % ────────────────────────────────────────────────────
+    // Row 12
+    table.cell(t, 0, row, "EPS YoY", bgcolor=RowBG, text_color=color.yellow, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        _idx  = quartersToShow - 1 - i
+        _yoy  = yoyChg(epsArr, _idx)
+        // acceleration: is this quarter's YoY higher than the prior quarter's YoY?
+        _yoyP = yoyChg(epsArr, _idx + 1)
+        _accel = not na(_yoy) and not na(_yoyP) and _yoy > _yoyP
+        _suf  = _accel ? " ▲" : ""
+        table.cell(t, i + 1, row, fmtPct(_yoy) + _suf, bgcolor=RowBG, text_color=growthColor(_yoy), text_size=TextSize)
+    row += 1
+
+    // ── Row 13: Sales YoY % ──────────────────────────────────────────────────
+    // Row 13
+    table.cell(t, 0, row, "Sales YoY", bgcolor=RowBG, text_color=color.yellow, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        _idx  = quartersToShow - 1 - i
+        _yoy  = yoyChg(salesArr, _idx)
+        _yoyP = yoyChg(salesArr, _idx + 1)
+        _accel = not na(_yoy) and not na(_yoyP) and _yoy > _yoyP
+        _suf  = _accel ? " ▲" : ""
+        table.cell(t, i + 1, row, fmtPct(_yoy) + _suf, bgcolor=RowBG, text_color=growthColor(_yoy), text_size=TextSize)
+    row += 1
+
+    // ── Row 14: Margin YoY  (pp change vs same quarter last year) ────────────
+    // Row 14
+    table.cell(t, 0, row, "Margin YoY", bgcolor=RowBG, text_color=color.yellow, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        _idx  = quartersToShow - 1 - i
+        _pp   = ppChg(margArr, _idx, 4)
+        _ppC  = na(_pp) ? FlatColor : _pp > 0.5 ? UpColor : _pp < -0.5 ? DownColor : FlatColor
+        table.cell(t, i + 1, row, fmtPp(_pp), bgcolor=RowBG, text_color=_ppC, text_size=TextSize)
+    row += 1
+
+    // ── Row 15: EPS Surprise % (from earnings calendar: actual vs analyst estimate) ─
+    // Row 15  blank cells = TradingView has no estimate data for this ticker/quarter
+    table.cell(t, 0, row, "EPS Surp%", bgcolor=RowBG, text_color=color.silver, text_size=TextSize)
+    for i = 0 to quartersToShow - 1
+        _idx  = quartersToShow - 1 - i
+        _sp   = array.get(surprArr, _idx)
+        _spC  = na(_sp) ? FlatColor : _sp >= 5 ? GoodColor : _sp >= 0 ? OkColor : BadColor
+        _spTxt = na(_sp) ? "n/a" : fmtPct(_sp)
+        table.cell(t, i + 1, row, _spTxt, bgcolor=RowBG, text_color=_spC, text_size=TextSize)
+    row += 1
+
+    // ── Row 16: Annual EPS section header ────────────────────────────────────
+    // Row 16
+    _a0 = array.get(annArr, 0)
+    _a1 = array.get(annArr, 1)
+    _a2 = array.get(annArr, 2)
+    _annGrow1 = not na(_a0) and not na(_a1) and _a1 != 0 and _a0 > _a1
+    _annGrow2 = not na(_a1) and not na(_a2) and _a2 != 0 and _a1 > _a2
+    _annConsec = _annGrow1 and _annGrow2
+    _annHdrTxt = "Annual EPS  (" + (_annConsec ? "📈 2+ Consecutive Years Growth ✓" : "–") + ")"
+    fullRow(row, _annHdrTxt, AnnualBG, _annConsec ? GoodColor : color.white)
+    row += 1
+
+    // ── Row 17: Annual EPS year header (ascending: oldest left → newest right) ───
+    // Row 17  annArr index 3 = oldest FY, index 0 = newest FY
+    table.cell(t, 0, row, "Year", bgcolor=AnnualBG, text_color=color.white, text_size=TextSize)
+    for j = 0 to quartersToShow - 1
+        if j <= 3
+            _rj  = 3 - j   // j=0 → oldest (idx 3), j=3 → newest (idx 0)
+            _ad  = array.get(annDates, _rj)
+            _yr  = _ad == 0 ? "FY-" + str.tostring(_rj) : str.format("{0, date, yyyy}", _ad)
+            table.cell(t, j + 1, row, _yr, bgcolor=AnnualBG, text_color=color.white, text_size=TextSize)
+        else
+            table.cell(t, j + 1, row, "", bgcolor=AnnualBG, text_color=FlatColor, text_size=TextSize)
+    row += 1
+
+    // ── Row 18: Annual EPS values (ascending order matching year header) ────────
+    // Row 18
+    table.cell(t, 0, row, "Ann EPS", bgcolor=RowBG, text_color=color.aqua, text_size=TextSize)
+    for j = 0 to quartersToShow - 1
+        if j <= 3
+            _rj  = 3 - j
+            _av  = array.get(annArr, _rj)
+            _ac  = na(_av) ? FlatColor : _av > 0 ? GoodColor : BadColor
+            table.cell(t, j + 1, row, fmtVal(_av), bgcolor=RowBG, text_color=_ac, text_size=TextSize)
+        else
+            table.cell(t, j + 1, row, "", bgcolor=RowBG, text_color=FlatColor, text_size=TextSize)
+    row += 1
+
+    // ── Row 19: Annual EPS YoY growth % (ascending, all 4 cols show growth) ──────
+    // Row 19  col j+1 shows growth FROM the year in col j TO col j+1
+    //   j=0: curr=annArr[3], prev=annArr[4]  (5th slot provides base for oldest displayed year)
+    //   j=1: curr=annArr[2], prev=annArr[3]
+    //   j=2: curr=annArr[1], prev=annArr[2]
+    //   j=3: curr=annArr[0], prev=annArr[1]
+    table.cell(t, 0, row, "Ann Grw%", bgcolor=RowBG, text_color=color.aqua, text_size=TextSize)
+    for j = 0 to quartersToShow - 1
+        if j > 3
+            table.cell(t, j + 1, row, "", bgcolor=RowBG, text_color=FlatColor, text_size=TextSize)
+        else
+            _rj     = 3 - j          // j=0→idx3, j=1→idx2, j=2→idx1, j=3→idx0
+            _a_curr = array.get(annArr, _rj)
+            _a_prev = array.get(annArr, _rj + 1)   // valid: max _rj=3, so _rj+1=4 (within size 5)
+            _ag     = na(_a_curr) or na(_a_prev) or _a_prev == 0 ? na : (_a_curr - _a_prev) / math.abs(_a_prev) * 100
+            table.cell(t, j + 1, row, fmtPct(_ag), bgcolor=RowBG, text_color=growthColor(_ag), text_size=TextSize)
+    row += 1
+
+    // ── Row 20: Code 33 status ────────────────────────────────────────────────
+    // Code 33 = 3 consecutive quarters of:  EPS accel + Sales accel + Margin expanding
+    // Row 20
+    _ea0 = epsAccel(0)
+    _ea1 = epsAccel(1)
+    _ea2 = epsAccel(2)
+    _sa0 = salesAccel(0)
+    _sa1 = salesAccel(1)
+    _sa2 = salesAccel(2)
+    _me0 = marginExpand(0)
+    _me1 = marginExpand(1)
+    _me2 = marginExpand(2)
+    _epsA3   = _ea0 and _ea1 and _ea2
+    _salesA3 = _sa0 and _sa1 and _sa2
+    _margA3  = _me0 and _me1 and _me2
+    _code33  = _epsA3 and _salesA3 and _margA3
+    _c33bg   = _code33 ? Code33BG : RowBG
+    _c33tc   = _code33 ? color.black : FlatColor
+    _c33txt  = _code33
+         ? "👑  CODE 33  ACTIVE  –  EPS✓  Sales✓  Margin✓  (3 consecutive quarters)"
+         : "Code 33:  EPS " + (_epsA3 ? "✓" : "✗") +
+           "  Sales " + (_salesA3 ? "✓" : "✗") +
+           "  Margin " + (_margA3 ? "✓" : "✗") +
+           "  (need 3 consecutive quarters each)"
+    fullRow(row, _c33txt, _c33bg, _c33tc)
+
+// Dummy plot required by TradingView
+plot(na, display=display.none)
