@@ -37,6 +37,7 @@ dailyClose  = request.security(syminfo.tickerid, "D", close)
 sma200      = request.security(syminfo.tickerid, "D", ta.sma(close, 200))
 sma150      = request.security(syminfo.tickerid, "D", ta.sma(close, 150))
 sma50       = request.security(syminfo.tickerid, "D", ta.sma(close, 50))
+sma20       = request.security(syminfo.tickerid, "D", ta.sma(close, 20))
 sma200_1M   = request.security(syminfo.tickerid, "D", ta.sma(close[21], 200))
 week52High  = request.security(syminfo.tickerid, "D", ta.highest(high, 252))
 week52Low   = request.security(syminfo.tickerid, "D", ta.lowest(low,  252))
@@ -46,6 +47,7 @@ mcapCr      = (dailyClose * totalShares) / 10000000
 pctAbove52Low  = (dailyClose - week52Low)  / week52Low  * 100
 pctBelow52High = (week52High - dailyClose) / week52High * 100
 
+pricePctSma20   = not na(sma20)  and sma20  > 0 ? (dailyClose - sma20)  / sma20  * 100 : na
 pricePctSma50   = not na(sma50)  and sma50  > 0 ? (dailyClose - sma50)  / sma50  * 100 : na
 pricePctSma150  = not na(sma150) and sma150 > 0 ? (dailyClose - sma150) / sma150 * 100 : na
 pricePctSma200  = not na(sma200) and sma200 > 0 ? (dailyClose - sma200) / sma200 * 100 : na
@@ -53,6 +55,7 @@ sma150PctSma200 = not na(sma150) and not na(sma200) and sma200 > 0 ? (sma150 - s
 sma50PctSma150  = not na(sma50)  and not na(sma150) and sma150 > 0 ? (sma50  - sma150) / sma150 * 100 : na
 sma50PctSma200  = not na(sma50)  and not na(sma200) and sma200 > 0 ? (sma50  - sma200) / sma200 * 100 : na
 // C8 display: show the weaker (binding) margin – whichever of SMA150 or SMA200 SMA50 is closer to
+sma20PctSma50   = not na(sma20)  and not na(sma50)  and sma50  > 0 ? (sma20  - sma50)  / sma50  * 100 : na
 sma50WeakerPct  = na(sma50PctSma150) or na(sma50PctSma200) ? na : math.min(sma50PctSma150, sma50PctSma200)
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -269,13 +272,18 @@ if showLabels and not na(annEps)
 // ═══════════════════════════════════════════════════════════════════════════════
 // TABLE
 // numCols = quartersToShow + 1  (label col + one col per quarter)
-// totalRows = 26
-//   Rows  0-1 :  Market cap + Trend score header
-//   Rows  2-10:  9 individual trend criteria (C8 split: SMA50>SMA150, SMA50>SMA200)
-//   Rows 11-25:  Fundamentals
+// totalRows = 29
+//   Row   0   :  Market cap
+//   Rows  1-2 :  SMA20 info (informational)
+//   Row   3   :  Trend score header
+//   Rows  4-6 :  Price vs SMA50 / SMA150 / SMA200
+//   Rows  7-8 :  52-week range
+//   Rows  9-12:  SMA comparisons + SMA200 rising
+//   Row  13   :  Rs Ranking Ann (informational)
+//   Rows 14-28:  Fundamentals
 // ═══════════════════════════════════════════════════════════════════════════════
 numCols   = quartersToShow + 1
-totalRows = 26
+totalRows = 29
 
 var table t = table.new(tableY + '_' + tableX, numCols, totalRows,
      bgcolor=RowBG, frame_color=color.gray, border_color=color.gray, border_width=1)
@@ -284,6 +292,12 @@ var table t = table.new(tableY + '_' + tableX, numCols, totalRows,
 fullRow(r, txt, bg, tc) =>
     table.cell(t, 0, r, txt, bgcolor=bg, text_color=tc, text_size=TextSize, text_halign=text.align_left)
     table.merge_cells(t, 0, r, numCols - 1, r)
+
+// ── Reusable: informational SMA row (no pass/fail column) ──────────────────
+infoRow(r, lbl, val, vc) =>
+    table.cell(t, 0,        r, lbl, bgcolor=TrendBG, text_color=color.white,  text_size=TextSize, text_halign=text.align_left)
+    table.cell(t, 1,        r, val, bgcolor=TrendBG, text_color=vc,           text_size=TextSize, text_halign=text.align_center)
+    table.merge_cells(t, 1, r, numCols - 1, r)
 
 // ── Reusable: one trend criterion per row ─────────────────────────────────────
 // Layout: [ label (col 0) | value in pass/fail color (cols 1..numCols-2 merged) | ✓/✗ (last col) ]
@@ -301,55 +315,67 @@ if barstate.islast
     row = 0
 
     // ── Row 0: Market Cap ──────────────────────────────────────────────────────
-    // Row 0
     mcapTxt = "Mkt Cap:  " + fmtMCap(mcapCr) + "  (" + getCapCat(mcapCr) + ")"
     fullRow(row, mcapTxt, HeaderBG, color.white)
     row += 1
 
-    // ── Row 1: Trend Template score header ────────────────────────────────────
-    // Row 1
+    // ── Rows 1-2: Extra SMA info (informational, not Minervini criteria) ──────
+    _sma20PriceColor = na(pricePctSma20) ? FlatColor : pricePctSma20 >= 0 ? UpColor : DownColor
+    infoRow(row, "Price vs SMA20", fmtSma(pricePctSma20), _sma20PriceColor)
+    row += 1
+    _sma20Sma50Color = na(sma20PctSma50) ? FlatColor : sma20PctSma50 >= 0 ? UpColor : DownColor
+    infoRow(row, "SMA20 vs SMA50", fmtSma(sma20PctSma50), _sma20Sma50Color)
+    row += 1
+
+    // ── Row 3: Trend Template score header ────────────────────────────────────
     _scoreColor = templateScore == 8 ? GoodColor : templateScore >= 6 ? OkColor : BadColor
-    _scoreTxt   = "Trend Template  " + str.tostring(templateScore) + "/8  " +
-                  (templateScore == 8 ? "✓ PASS" : templateScore >= 6 ? "⚠ PARTIAL" : "✗ FAIL")
+    _scoreStatus = templateScore == 8 ? "✓ PASS" : templateScore >= 6 ? "⚠ PARTIAL" : "✗ FAIL"
+    _scoreTxt   = "Trend Template  " + str.tostring(templateScore) + "/8  " + _scoreStatus + "  (Rs Ranking not inc.)"
     fullRow(row, _scoreTxt, HeaderBG, _scoreColor)
     row += 1
 
-    // ── Rows 2-10: Individual trend template criteria (one per row) ──────────────
-    // Row 2 – C1: Price ≥30% above 52-week low
-    singleCritRow(row, "52wk Low ≥30%",  "+" + str.tostring(pctAbove52Low,  "#.#") + "%", c1)
-    row += 1
-    // Row 3 – C2: Price within 25% of 52-week high
-    singleCritRow(row, "52wk High ≤25%", "-" + str.tostring(pctBelow52High, "#.#") + "%", c2)
-    row += 1
-    // Row 4 – C3: Price above 200-day SMA
-    singleCritRow(row, "Price > SMA200",  fmtSma(pricePctSma200), c3)
+    // ── Rows 4-6: Price vs SMAs ────────────────────────────────────────────────
+    // Row 4 – C7: Price above 50-day SMA
+    singleCritRow(row, "Price > SMA50",   fmtSma(pricePctSma50),  c7)
     row += 1
     // Row 5 – C4: Price above 150-day SMA
     singleCritRow(row, "Price > SMA150",  fmtSma(pricePctSma150), c4)
     row += 1
-    // Row 6 – C5: 150-day SMA above 200-day SMA
+    // Row 6 – C3: Price above 200-day SMA
+    singleCritRow(row, "Price > SMA200",  fmtSma(pricePctSma200), c3)
+    row += 1
+
+    // ── Rows 7-8: 52-week range ────────────────────────────────────────────────
+    // Row 7 – C1: Price ≥30% above 52-week low
+    singleCritRow(row, "52wk Low ≥30%",  "+" + str.tostring(pctAbove52Low,  "#.#") + "%", c1)
+    row += 1
+    // Row 8 – C2: Price within 25% of 52-week high
+    singleCritRow(row, "52wk High ≤25%", "-" + str.tostring(pctBelow52High, "#.#") + "%", c2)
+    row += 1
+
+    // ── Rows 9-12: SMA comparisons ────────────────────────────────────────────
+    // Row 9 – C5: 150-day SMA above 200-day SMA
     singleCritRow(row, "SMA150 > SMA200", fmtSma(sma150PctSma200), c5)
     row += 1
-    // Row 7 – C6: 200-day SMA trending upward
+    // Row 10 – C6: 200-day SMA trending upward
     singleCritRow(row, "SMA200 Rising",   c6 ? "Rising (↑)" : "Declining (↓)", c6)
     row += 1
-    // Row 8 – C7: Price above 50-day SMA
-    singleCritRow(row, "Price > SMA50",   fmtSma(pricePctSma50), c7)
-    row += 1
-    // Row 9 – C8a: 50-day SMA above 150-day SMA  (sub-condition 1 of 2)
+    // Row 11 – C8a: 50-day SMA above 150-day SMA
     singleCritRow(row, "SMA50 > SMA150",  fmtSma(sma50PctSma150), c8a)
     row += 1
-    // Row 10 – C8b: 50-day SMA above 200-day SMA  (sub-condition 2 of 2)
+    // Row 12 – C8b: 50-day SMA above 200-day SMA
     singleCritRow(row, "SMA50 > SMA200",  fmtSma(sma50PctSma200), c8b)
     row += 1
 
-    // ── Row 11: Fundamentals section header ───────────────────────────────────
-    // Row 11
+    // ── Row 13: Rs Ranking Ann (Minervini criterion – not calculable on TradingView) ─
+    infoRow(row, "Rs Ranking Ann", "See sector tool", color.silver)
+    row += 1
+
+    // ── Row 14: Fundamentals section header ───────────────────────────────────
     fullRow(row, "FUNDAMENTALS  (Minervini SEPA)", HeaderBG, color.white)
     row += 1
 
-    // ── Row 7: Quarter date headers ───────────────────────────────────────────
-    // Row 7
+    // ── Row 15: Quarter date headers ──────────────────────────────────────────
     table.cell(t, 0, row, "METRIC", bgcolor=HeaderBG, text_color=color.white, text_size=TextSize)
     for i = 0 to quartersToShow - 1
         _idx  = quartersToShow - 1 - i       // newest shown = smallest index
@@ -358,8 +384,7 @@ if barstate.islast
         table.cell(t, i + 1, row, _qlbl, bgcolor=HeaderBG, text_color=color.white, text_size=TextSize)
     row += 1
 
-    // ── Row 8: Net Margin % ───────────────────────────────────────────────────
-    // Row 8
+    // ── Row 16: Net Margin % ──────────────────────────────────────────────────
     table.cell(t, 0, row, "Margin%", bgcolor=RowBG, text_color=color.orange, text_size=TextSize)
     for i = 0 to quartersToShow - 1
         _idx = quartersToShow - 1 - i
@@ -367,8 +392,7 @@ if barstate.islast
         table.cell(t, i + 1, row, fmtVal(_mv) + (na(_mv) ? "" : "%"), bgcolor=RowBG, text_color=getMarginColor(_mv), text_size=TextSize)
     row += 1
 
-    // ── Row 9: ROE % ──────────────────────────────────────────────────────────
-    // Row 9
+    // ── Row 17: ROE % ─────────────────────────────────────────────────────────
     table.cell(t, 0, row, "ROE%", bgcolor=RowBG, text_color=color.orange, text_size=TextSize)
     for i = 0 to quartersToShow - 1
         _idx = quartersToShow - 1 - i
@@ -376,8 +400,7 @@ if barstate.islast
         table.cell(t, i + 1, row, fmtVal(_rv), bgcolor=RowBG, text_color=getRoeColor(_rv), text_size=TextSize)
     row += 1
 
-    // ── Row 10: Debt / Equity ─────────────────────────────────────────────────
-    // Row 10
+    // ── Row 18: Debt / Equity ────────────────────────────────────────────────
     table.cell(t, 0, row, "D/E", bgcolor=RowBG, text_color=color.fuchsia, text_size=TextSize)
     for i = 0 to quartersToShow - 1
         _idx = quartersToShow - 1 - i
@@ -385,13 +408,12 @@ if barstate.islast
         table.cell(t, i + 1, row, fmtVal(_dv), bgcolor=RowBG, text_color=getDeColor(_dv), text_size=TextSize)
     row += 1
 
-    // ── Row 11: YoY section header ────────────────────────────────────────────
-    // Row 11 – Minervini requires >=20% YoY; acceleration (▲) is the edge signal
+    // ── Row 19: YoY section header ────────────────────────────────────────────
+    // Minervini requires >=20% YoY; acceleration (▲) is the edge signal
     fullRow(row, "YoY Growth  (Minervini min: EPS & Sales ≥20%  |  ▲ = accelerating)", SeasonalBG, color.white)
     row += 1
 
-    // ── Row 12: EPS YoY % ────────────────────────────────────────────────────
-    // Row 12
+    // ── Row 20: EPS YoY % ──────────────────────────────────────────────────────
     table.cell(t, 0, row, "EPS YoY", bgcolor=RowBG, text_color=color.yellow, text_size=TextSize)
     for i = 0 to quartersToShow - 1
         _idx  = quartersToShow - 1 - i
