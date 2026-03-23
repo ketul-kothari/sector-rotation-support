@@ -11,7 +11,8 @@ quartersToShow = input.int(4,   'Quarters to Display', minval=4, maxval=8)
 tableY         = input.string('top',   'Vertical',   options=['top','middle','bottom'])
 tableX         = input.string('right', 'Horizontal', options=['left','center','right'])
 TextSize       = input.string('tiny',  'Text Size',  options=['tiny','small','normal'])
-showLabels     = input.bool(false, 'Show Chart Labels at Earnings Bars')
+showLabels        = input.bool(false, 'Show Chart Labels at Earnings Bars')
+showFundamentals  = input.bool(true,  'Show Fundamentals')
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // THEME
@@ -371,174 +372,175 @@ if barstate.islast
     infoRow(row, "Rs Ranking Ann", "See sector tool", color.silver)
     row += 1
 
-    // ── Row 14: Fundamentals section header ───────────────────────────────────
-    fullRow(row, "FUNDAMENTALS  (Minervini SEPA)", HeaderBG, color.white)
-    row += 1
+    if showFundamentals
+        // ── Row 14: Fundamentals section header ───────────────────────────────────
+        fullRow(row, "FUNDAMENTALS  (Minervini SEPA)", HeaderBG, color.white)
+        row += 1
 
-    // ── Row 15: Quarter date headers ──────────────────────────────────────────
-    table.cell(t, 0, row, "METRIC", bgcolor=HeaderBG, text_color=color.white, text_size=TextSize)
-    for i = 0 to quartersToShow - 1
-        _idx  = quartersToShow - 1 - i       // newest shown = smallest index
-        _qd   = array.get(qDates, _idx)
-        _qlbl = na(_qd) or _qd == 0 ? "Q" + str.tostring(i + 1) : str.format("{0, date, MMM-yy}", _qd)
-        table.cell(t, i + 1, row, _qlbl, bgcolor=HeaderBG, text_color=color.white, text_size=TextSize)
-    row += 1
+        // ── Row 15: Quarter date headers ──────────────────────────────────────────
+        table.cell(t, 0, row, "METRIC", bgcolor=HeaderBG, text_color=color.white, text_size=TextSize)
+        for i = 0 to quartersToShow - 1
+            _idx  = quartersToShow - 1 - i       // newest shown = smallest index
+            _qd   = array.get(qDates, _idx)
+            _qlbl = na(_qd) or _qd == 0 ? "Q" + str.tostring(i + 1) : str.format("{0, date, MMM-yy}", _qd)
+            table.cell(t, i + 1, row, _qlbl, bgcolor=HeaderBG, text_color=color.white, text_size=TextSize)
+        row += 1
 
-    // ── Row 16: Net Margin % ──────────────────────────────────────────────────
-    table.cell(t, 0, row, "Margin%", bgcolor=RowBG, text_color=color.orange, text_size=TextSize)
-    for i = 0 to quartersToShow - 1
-        _idx = quartersToShow - 1 - i
-        _mv  = array.get(margArr, _idx)
-        table.cell(t, i + 1, row, fmtVal(_mv) + (na(_mv) ? "" : "%"), bgcolor=RowBG, text_color=getMarginColor(_mv), text_size=TextSize)
-    row += 1
+        // ── Row 16: Net Margin % ──────────────────────────────────────────────────
+        table.cell(t, 0, row, "Margin%", bgcolor=RowBG, text_color=color.orange, text_size=TextSize)
+        for i = 0 to quartersToShow - 1
+            _idx = quartersToShow - 1 - i
+            _mv  = array.get(margArr, _idx)
+            table.cell(t, i + 1, row, fmtVal(_mv) + (na(_mv) ? "" : "%"), bgcolor=RowBG, text_color=getMarginColor(_mv), text_size=TextSize)
+        row += 1
 
-    // ── Row 17: ROE % ─────────────────────────────────────────────────────────
-    table.cell(t, 0, row, "ROE%", bgcolor=RowBG, text_color=color.orange, text_size=TextSize)
-    for i = 0 to quartersToShow - 1
-        _idx = quartersToShow - 1 - i
-        _rv  = array.get(roeArr, _idx)
-        table.cell(t, i + 1, row, fmtVal(_rv), bgcolor=RowBG, text_color=getRoeColor(_rv), text_size=TextSize)
-    row += 1
+        // ── Row 17: ROE % ─────────────────────────────────────────────────────────
+        table.cell(t, 0, row, "ROE%", bgcolor=RowBG, text_color=color.orange, text_size=TextSize)
+        for i = 0 to quartersToShow - 1
+            _idx = quartersToShow - 1 - i
+            _rv  = array.get(roeArr, _idx)
+            table.cell(t, i + 1, row, fmtVal(_rv), bgcolor=RowBG, text_color=getRoeColor(_rv), text_size=TextSize)
+        row += 1
 
-    // ── Row 18: Debt / Equity ────────────────────────────────────────────────
-    table.cell(t, 0, row, "D/E", bgcolor=RowBG, text_color=color.fuchsia, text_size=TextSize)
-    for i = 0 to quartersToShow - 1
-        _idx = quartersToShow - 1 - i
-        _dv  = array.get(deArr, _idx)
-        table.cell(t, i + 1, row, fmtVal(_dv), bgcolor=RowBG, text_color=getDeColor(_dv), text_size=TextSize)
-    row += 1
+        // ── Row 18: Debt / Equity ────────────────────────────────────────────────
+        table.cell(t, 0, row, "D/E", bgcolor=RowBG, text_color=color.fuchsia, text_size=TextSize)
+        for i = 0 to quartersToShow - 1
+            _idx = quartersToShow - 1 - i
+            _dv  = array.get(deArr, _idx)
+            table.cell(t, i + 1, row, fmtVal(_dv), bgcolor=RowBG, text_color=getDeColor(_dv), text_size=TextSize)
+        row += 1
 
-    // ── Row 19: YoY section header ────────────────────────────────────────────
-    // Minervini requires >=20% YoY; acceleration (▲) is the edge signal
-    fullRow(row, "YoY Growth  (Minervini min: EPS & Sales ≥20%  |  ▲ = accelerating)", SeasonalBG, color.white)
-    row += 1
+        // ── Row 19: YoY section header ────────────────────────────────────────────
+        // Minervini requires >=20% YoY; acceleration (▲) is the edge signal
+        fullRow(row, "YoY Growth  (Minervini min: EPS & Sales ≥20%  |  ▲ = accelerating)", SeasonalBG, color.white)
+        row += 1
 
-    // ── Row 20: EPS YoY % ──────────────────────────────────────────────────────
-    table.cell(t, 0, row, "EPS YoY", bgcolor=RowBG, text_color=color.yellow, text_size=TextSize)
-    for i = 0 to quartersToShow - 1
-        _idx  = quartersToShow - 1 - i
-        _yoy  = yoyChg(epsArr, _idx)
-        // acceleration: is this quarter's YoY higher than the prior quarter's YoY?
-        _yoyP = yoyChg(epsArr, _idx + 1)
-        _accel = not na(_yoy) and not na(_yoyP) and _yoy > _yoyP
-        _suf  = _accel ? " ▲" : ""
-        table.cell(t, i + 1, row, fmtPct(_yoy) + _suf, bgcolor=RowBG, text_color=growthColor(_yoy), text_size=TextSize)
-    row += 1
+        // ── Row 20: EPS YoY % ──────────────────────────────────────────────────────
+        table.cell(t, 0, row, "EPS YoY", bgcolor=RowBG, text_color=color.yellow, text_size=TextSize)
+        for i = 0 to quartersToShow - 1
+            _idx  = quartersToShow - 1 - i
+            _yoy  = yoyChg(epsArr, _idx)
+            // acceleration: is this quarter's YoY higher than the prior quarter's YoY?
+            _yoyP = yoyChg(epsArr, _idx + 1)
+            _accel = not na(_yoy) and not na(_yoyP) and _yoy > _yoyP
+            _suf  = _accel ? " ▲" : ""
+            table.cell(t, i + 1, row, fmtPct(_yoy) + _suf, bgcolor=RowBG, text_color=growthColor(_yoy), text_size=TextSize)
+        row += 1
 
-    // ── Row 13: Sales YoY % ──────────────────────────────────────────────────
-    // Row 13
-    table.cell(t, 0, row, "Sales YoY", bgcolor=RowBG, text_color=color.yellow, text_size=TextSize)
-    for i = 0 to quartersToShow - 1
-        _idx  = quartersToShow - 1 - i
-        _yoy  = yoyChg(salesArr, _idx)
-        _yoyP = yoyChg(salesArr, _idx + 1)
-        _accel = not na(_yoy) and not na(_yoyP) and _yoy > _yoyP
-        _suf  = _accel ? " ▲" : ""
-        table.cell(t, i + 1, row, fmtPct(_yoy) + _suf, bgcolor=RowBG, text_color=growthColor(_yoy), text_size=TextSize)
-    row += 1
+        // ── Row 13: Sales YoY % ──────────────────────────────────────────────────
+        // Row 13
+        table.cell(t, 0, row, "Sales YoY", bgcolor=RowBG, text_color=color.yellow, text_size=TextSize)
+        for i = 0 to quartersToShow - 1
+            _idx  = quartersToShow - 1 - i
+            _yoy  = yoyChg(salesArr, _idx)
+            _yoyP = yoyChg(salesArr, _idx + 1)
+            _accel = not na(_yoy) and not na(_yoyP) and _yoy > _yoyP
+            _suf  = _accel ? " ▲" : ""
+            table.cell(t, i + 1, row, fmtPct(_yoy) + _suf, bgcolor=RowBG, text_color=growthColor(_yoy), text_size=TextSize)
+        row += 1
 
-    // ── Row 14: Margin YoY  (pp change vs same quarter last year) ────────────
-    // Row 14
-    table.cell(t, 0, row, "Margin YoY", bgcolor=RowBG, text_color=color.yellow, text_size=TextSize)
-    for i = 0 to quartersToShow - 1
-        _idx  = quartersToShow - 1 - i
-        _pp   = ppChg(margArr, _idx, 4)
-        _ppC  = na(_pp) ? FlatColor : _pp > 0.5 ? UpColor : _pp < -0.5 ? DownColor : FlatColor
-        table.cell(t, i + 1, row, fmtPp(_pp), bgcolor=RowBG, text_color=_ppC, text_size=TextSize)
-    row += 1
+        // ── Row 14: Margin YoY  (pp change vs same quarter last year) ────────────
+        // Row 14
+        table.cell(t, 0, row, "Margin YoY", bgcolor=RowBG, text_color=color.yellow, text_size=TextSize)
+        for i = 0 to quartersToShow - 1
+            _idx  = quartersToShow - 1 - i
+            _pp   = ppChg(margArr, _idx, 4)
+            _ppC  = na(_pp) ? FlatColor : _pp > 0.5 ? UpColor : _pp < -0.5 ? DownColor : FlatColor
+            table.cell(t, i + 1, row, fmtPp(_pp), bgcolor=RowBG, text_color=_ppC, text_size=TextSize)
+        row += 1
 
-    // ── Row 15: EPS Surprise % (from earnings calendar: actual vs analyst estimate) ─
-    // Row 15  blank cells = TradingView has no estimate data for this ticker/quarter
-    table.cell(t, 0, row, "EPS Surp%", bgcolor=RowBG, text_color=color.silver, text_size=TextSize)
-    for i = 0 to quartersToShow - 1
-        _idx  = quartersToShow - 1 - i
-        _sp   = array.get(surprArr, _idx)
-        _spC  = na(_sp) ? FlatColor : _sp >= 5 ? GoodColor : _sp >= 0 ? OkColor : BadColor
-        _spTxt = na(_sp) ? "n/a" : fmtPct(_sp)
-        table.cell(t, i + 1, row, _spTxt, bgcolor=RowBG, text_color=_spC, text_size=TextSize)
-    row += 1
+        // ── Row 15: EPS Surprise % (from earnings calendar: actual vs analyst estimate) ─
+        // Row 15  blank cells = TradingView has no estimate data for this ticker/quarter
+        table.cell(t, 0, row, "EPS Surp%", bgcolor=RowBG, text_color=color.silver, text_size=TextSize)
+        for i = 0 to quartersToShow - 1
+            _idx  = quartersToShow - 1 - i
+            _sp   = array.get(surprArr, _idx)
+            _spC  = na(_sp) ? FlatColor : _sp >= 5 ? GoodColor : _sp >= 0 ? OkColor : BadColor
+            _spTxt = na(_sp) ? "n/a" : fmtPct(_sp)
+            table.cell(t, i + 1, row, _spTxt, bgcolor=RowBG, text_color=_spC, text_size=TextSize)
+        row += 1
 
-    // ── Row 16: Annual EPS section header ────────────────────────────────────
-    // Row 16
-    _a0 = array.get(annArr, 0)
-    _a1 = array.get(annArr, 1)
-    _a2 = array.get(annArr, 2)
-    _annGrow1 = not na(_a0) and not na(_a1) and _a1 != 0 and _a0 > _a1
-    _annGrow2 = not na(_a1) and not na(_a2) and _a2 != 0 and _a1 > _a2
-    _annConsec = _annGrow1 and _annGrow2
-    _annHdrTxt = "Annual EPS  (" + (_annConsec ? "📈 2+ Consecutive Years Growth ✓" : "–") + ")"
-    fullRow(row, _annHdrTxt, AnnualBG, _annConsec ? GoodColor : color.white)
-    row += 1
+        // ── Row 16: Annual EPS section header ────────────────────────────────────
+        // Row 16
+        _a0 = array.get(annArr, 0)
+        _a1 = array.get(annArr, 1)
+        _a2 = array.get(annArr, 2)
+        _annGrow1 = not na(_a0) and not na(_a1) and _a1 != 0 and _a0 > _a1
+        _annGrow2 = not na(_a1) and not na(_a2) and _a2 != 0 and _a1 > _a2
+        _annConsec = _annGrow1 and _annGrow2
+        _annHdrTxt = "Annual EPS  (" + (_annConsec ? "📈 2+ Consecutive Years Growth ✓" : "–") + ")"
+        fullRow(row, _annHdrTxt, AnnualBG, _annConsec ? GoodColor : color.white)
+        row += 1
 
-    // ── Row 17: Annual EPS year header (ascending: oldest left → newest right) ───
-    // Row 17  annArr index 3 = oldest FY, index 0 = newest FY
-    table.cell(t, 0, row, "Year", bgcolor=AnnualBG, text_color=color.white, text_size=TextSize)
-    for j = 0 to quartersToShow - 1
-        if j <= 3
-            _rj  = 3 - j   // j=0 → oldest (idx 3), j=3 → newest (idx 0)
-            _ad  = array.get(annDates, _rj)
-            _yr  = _ad == 0 ? "FY-" + str.tostring(_rj) : str.format("{0, date, yyyy}", _ad)
-            table.cell(t, j + 1, row, _yr, bgcolor=AnnualBG, text_color=color.white, text_size=TextSize)
-        else
-            table.cell(t, j + 1, row, "", bgcolor=AnnualBG, text_color=FlatColor, text_size=TextSize)
-    row += 1
+        // ── Row 17: Annual EPS year header (ascending: oldest left → newest right) ───
+        // Row 17  annArr index 3 = oldest FY, index 0 = newest FY
+        table.cell(t, 0, row, "Year", bgcolor=AnnualBG, text_color=color.white, text_size=TextSize)
+        for j = 0 to quartersToShow - 1
+            if j <= 3
+                _rj  = 3 - j   // j=0 → oldest (idx 3), j=3 → newest (idx 0)
+                _ad  = array.get(annDates, _rj)
+                _yr  = _ad == 0 ? "FY-" + str.tostring(_rj) : str.format("{0, date, yyyy}", _ad)
+                table.cell(t, j + 1, row, _yr, bgcolor=AnnualBG, text_color=color.white, text_size=TextSize)
+            else
+                table.cell(t, j + 1, row, "", bgcolor=AnnualBG, text_color=FlatColor, text_size=TextSize)
+        row += 1
 
-    // ── Row 18: Annual EPS values (ascending order matching year header) ────────
-    // Row 18
-    table.cell(t, 0, row, "Ann EPS", bgcolor=RowBG, text_color=color.aqua, text_size=TextSize)
-    for j = 0 to quartersToShow - 1
-        if j <= 3
-            _rj  = 3 - j
-            _av  = array.get(annArr, _rj)
-            _ac  = na(_av) ? FlatColor : _av > 0 ? GoodColor : BadColor
-            table.cell(t, j + 1, row, fmtVal(_av), bgcolor=RowBG, text_color=_ac, text_size=TextSize)
-        else
-            table.cell(t, j + 1, row, "", bgcolor=RowBG, text_color=FlatColor, text_size=TextSize)
-    row += 1
+        // ── Row 18: Annual EPS values (ascending order matching year header) ────────
+        // Row 18
+        table.cell(t, 0, row, "Ann EPS", bgcolor=RowBG, text_color=color.aqua, text_size=TextSize)
+        for j = 0 to quartersToShow - 1
+            if j <= 3
+                _rj  = 3 - j
+                _av  = array.get(annArr, _rj)
+                _ac  = na(_av) ? FlatColor : _av > 0 ? GoodColor : BadColor
+                table.cell(t, j + 1, row, fmtVal(_av), bgcolor=RowBG, text_color=_ac, text_size=TextSize)
+            else
+                table.cell(t, j + 1, row, "", bgcolor=RowBG, text_color=FlatColor, text_size=TextSize)
+        row += 1
 
-    // ── Row 19: Annual EPS YoY growth % (ascending, all 4 cols show growth) ──────
-    // Row 19  col j+1 shows growth FROM the year in col j TO col j+1
-    //   j=0: curr=annArr[3], prev=annArr[4]  (5th slot provides base for oldest displayed year)
-    //   j=1: curr=annArr[2], prev=annArr[3]
-    //   j=2: curr=annArr[1], prev=annArr[2]
-    //   j=3: curr=annArr[0], prev=annArr[1]
-    table.cell(t, 0, row, "Ann Grw%", bgcolor=RowBG, text_color=color.aqua, text_size=TextSize)
-    for j = 0 to quartersToShow - 1
-        if j > 3
-            table.cell(t, j + 1, row, "", bgcolor=RowBG, text_color=FlatColor, text_size=TextSize)
-        else
-            _rj     = 3 - j          // j=0→idx3, j=1→idx2, j=2→idx1, j=3→idx0
-            _a_curr = array.get(annArr, _rj)
-            _a_prev = array.get(annArr, _rj + 1)   // valid: max _rj=3, so _rj+1=4 (within size 5)
-            _ag     = na(_a_curr) or na(_a_prev) or _a_prev == 0 ? na : (_a_curr - _a_prev) / math.abs(_a_prev) * 100
-            table.cell(t, j + 1, row, fmtPct(_ag), bgcolor=RowBG, text_color=growthColor(_ag), text_size=TextSize)
-    row += 1
+        // ── Row 19: Annual EPS YoY growth % (ascending, all 4 cols show growth) ──────
+        // Row 19  col j+1 shows growth FROM the year in col j TO col j+1
+        //   j=0: curr=annArr[3], prev=annArr[4]  (5th slot provides base for oldest displayed year)
+        //   j=1: curr=annArr[2], prev=annArr[3]
+        //   j=2: curr=annArr[1], prev=annArr[2]
+        //   j=3: curr=annArr[0], prev=annArr[1]
+        table.cell(t, 0, row, "Ann Grw%", bgcolor=RowBG, text_color=color.aqua, text_size=TextSize)
+        for j = 0 to quartersToShow - 1
+            if j > 3
+                table.cell(t, j + 1, row, "", bgcolor=RowBG, text_color=FlatColor, text_size=TextSize)
+            else
+                _rj     = 3 - j          // j=0→idx3, j=1→idx2, j=2→idx1, j=3→idx0
+                _a_curr = array.get(annArr, _rj)
+                _a_prev = array.get(annArr, _rj + 1)   // valid: max _rj=3, so _rj+1=4 (within size 5)
+                _ag     = na(_a_curr) or na(_a_prev) or _a_prev == 0 ? na : (_a_curr - _a_prev) / math.abs(_a_prev) * 100
+                table.cell(t, j + 1, row, fmtPct(_ag), bgcolor=RowBG, text_color=growthColor(_ag), text_size=TextSize)
+        row += 1
 
-    // ── Row 20: Code 33 status ────────────────────────────────────────────────
-    // Code 33 = 3 consecutive quarters of:  EPS accel + Sales accel + Margin expanding
-    // Row 20
-    _ea0 = epsAccel(0)
-    _ea1 = epsAccel(1)
-    _ea2 = epsAccel(2)
-    _sa0 = salesAccel(0)
-    _sa1 = salesAccel(1)
-    _sa2 = salesAccel(2)
-    _me0 = marginExpand(0)
-    _me1 = marginExpand(1)
-    _me2 = marginExpand(2)
-    _epsA3   = _ea0 and _ea1 and _ea2
-    _salesA3 = _sa0 and _sa1 and _sa2
-    _margA3  = _me0 and _me1 and _me2
-    _code33  = _epsA3 and _salesA3 and _margA3
-    _c33bg   = _code33 ? Code33BG : RowBG
-    _c33tc   = _code33 ? color.black : FlatColor
-    _c33txt  = _code33
-         ? "👑  CODE 33  ACTIVE  –  EPS✓  Sales✓  Margin✓  (3 consecutive quarters)"
-         : "Code 33:  EPS " + (_epsA3 ? "✓" : "✗") +
-           "  Sales " + (_salesA3 ? "✓" : "✗") +
-           "  Margin " + (_margA3 ? "✓" : "✗") +
-           "  (need 3 consecutive quarters each)"
-    fullRow(row, _c33txt, _c33bg, _c33tc)
+        // ── Row 20: Code 33 status ────────────────────────────────────────────────
+        // Code 33 = 3 consecutive quarters of:  EPS accel + Sales accel + Margin expanding
+        // Row 20
+        _ea0 = epsAccel(0)
+        _ea1 = epsAccel(1)
+        _ea2 = epsAccel(2)
+        _sa0 = salesAccel(0)
+        _sa1 = salesAccel(1)
+        _sa2 = salesAccel(2)
+        _me0 = marginExpand(0)
+        _me1 = marginExpand(1)
+        _me2 = marginExpand(2)
+        _epsA3   = _ea0 and _ea1 and _ea2
+        _salesA3 = _sa0 and _sa1 and _sa2
+        _margA3  = _me0 and _me1 and _me2
+        _code33  = _epsA3 and _salesA3 and _margA3
+        _c33bg   = _code33 ? Code33BG : RowBG
+        _c33tc   = _code33 ? color.black : FlatColor
+        _c33txt  = _code33
+             ? "👑  CODE 33  ACTIVE  –  EPS✓  Sales✓  Margin✓  (3 consecutive quarters)"
+             : "Code 33:  EPS " + (_epsA3 ? "✓" : "✗") +
+               "  Sales " + (_salesA3 ? "✓" : "✗") +
+               "  Margin " + (_margA3 ? "✓" : "✗") +
+               "  (need 3 consecutive quarters each)"
+        fullRow(row, _c33txt, _c33bg, _c33tc)
 
 // Dummy plot required by TradingView
 plot(na, display=display.none)
