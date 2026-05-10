@@ -90,17 +90,34 @@ plot(show_ma4 ? ma4 : na, title="MA4 (40W / 200D)", color=color_ma4, linewidth=w
 
 // ================== ALERTS ==================
 
-// Price crosses above/below MA4 (longest MA)
+// ── MA1 Alerts ──
+crossAboveMA1 = ta.crossover(close, ma1)
+crossBelowMA1 = ta.crossunder(close, ma1)
+alertcondition(crossAboveMA1, title="Cross Above MA1", message="{{ticker}} crossed above MA1 (4W / 20D) on {{interval}} timeframe")
+alertcondition(crossBelowMA1, title="Cross Below MA1", message="{{ticker}} crossed below MA1 (4W / 20D) on {{interval}} timeframe")
+
+// ── MA2 Alerts ──
+crossAboveMA2 = ta.crossover(close, ma2)
+crossBelowMA2 = ta.crossunder(close, ma2)
+alertcondition(crossAboveMA2, title="Cross Above MA2", message="{{ticker}} crossed above MA2 (10W / 50D) on {{interval}} timeframe")
+alertcondition(crossBelowMA2, title="Cross Below MA2", message="{{ticker}} crossed below MA2 (10W / 50D) on {{interval}} timeframe")
+
+// ── MA3 Alerts ──
+crossAboveMA3 = ta.crossover(close, ma3)
+crossBelowMA3 = ta.crossunder(close, ma3)
+alertcondition(crossAboveMA3, title="Cross Above MA3", message="{{ticker}} crossed above MA3 (30W / 150D) on {{interval}} timeframe")
+alertcondition(crossBelowMA3, title="Cross Below MA3", message="{{ticker}} crossed below MA3 (30W / 150D) on {{interval}} timeframe")
+
+// ── MA4 Alerts ──
 crossAboveMA4 = ta.crossover(close, ma4)
 crossBelowMA4 = ta.crossunder(close, ma4)
+alertcondition(crossAboveMA4, title="Cross Above MA4", message="{{ticker}} crossed above MA4 (40W / 200D) on {{interval}} timeframe")
+alertcondition(crossBelowMA4, title="Cross Below MA4", message="{{ticker}} crossed below MA4 (40W / 200D) on {{interval}} timeframe")
 
-alertcondition(crossAboveMA4, title="Price Crosses Above MA4", message="{{ticker}} crossed above MA4 (40W / 200D)")
-alertcondition(crossBelowMA4, title="Price Crosses Below MA4", message="{{ticker}} crossed below MA4 (40W / 200D)")
-
-// MA alignment (bullish = all MAs in order)
+// ── MA Alignment Alerts ──
+// Bullish = all MAs in order (Fast > Slow)
 bullishAlignment = ma1 > ma2 and ma2 > ma3 and ma3 > ma4
 bearishAlignment = ma1 < ma2 and ma2 < ma3 and ma3 < ma4
 
-alertcondition(bullishAlignment and not bullishAlignment[1], title="Bullish MA Alignment", message="{{ticker}} shows bullish MA alignment")
-alertcondition(bearishAlignment and not bearishAlignment[1], title="Bearish MA Alignment", message="{{ticker}} shows bearish MA alignment")
-
+alertcondition(bullishAlignment and not bullishAlignment[1], title="Bullish MA Alignment", message="{{ticker}} shows bullish MA alignment on {{interval}} timeframe")
+alertcondition(bearishAlignment and not bearishAlignment[1], title="Bearish MA Alignment", message="{{ticker}} shows bearish MA alignment on {{interval}} timeframe")
