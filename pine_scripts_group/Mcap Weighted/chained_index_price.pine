@@ -1,5 +1,5 @@
 //@version=6
-indicator("Chained Index Price", overlay=false, precision=2, max_bars_back=5000)
+indicator("Industry Master - Chained Index Price", overlay=false, precision=2, max_bars_back=5000)
 
 // --- 1. INDUSTRY SELECTION ---
 industry_choice = input.string("Aerospace & Defense", "Select Industry", options=[
