@@ -26,13 +26,14 @@ def generate_pine_automation():
     mask = (df['listing_date'] <= one_year_ago) & (df['market_cap'] >= MIN_MCAP)
     filtered_df = df[mask].copy()
     
-    # 4. Core Formula Generator
+    # 4. Core Formula Generator (Equal-Weighted Update)
     def build_pine_string(group):
         if group.empty: return ""
+        # Still sort by market cap to grab the largest 39 stocks
         top_stocks = group.sort_values(by='market_cap', ascending=False).head(TOP_N_STOCKS).copy()
-        total_mcap = top_stocks['market_cap'].sum()
-        top_stocks['weight'] = top_stocks['market_cap'] / total_mcap
-        parts = [f"{EXCHANGE_PREFIX}:{row['symbol']}:{row['weight']:.4f}" for _, row in top_stocks.iterrows()]
+        
+        # Omit the weight calculations entirely. Just append Exchange + Symbol.
+        parts = [f"{EXCHANGE_PREFIX}:{row['symbol']}" for _, row in top_stocks.iterrows()]
         return ", ".join(parts)
 
     # 5. Process Categories
