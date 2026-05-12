@@ -1,0 +1,135 @@
+//@version=6
+// @description Core math and data fetching engine for equal-weighted indices.
+library("ChainedIndexEqualWeightLibrary")
+
+// Define a custom object to return all our calculated data neatly
+export type IndexResult
+    float o
+    float h
+    float l
+    float c
+    float pct_chg
+    float rs
+    float vol
+    int count
+
+// --- HELPER 1: PARSER (Moved Outside) ---
+get_s(array<string> pairs_arr, int idx) => 
+    string t = ""
+    if idx < pairs_arr.size()
+        parts = str.split(pairs_arr.get(idx), ":")
+        t := parts.size() >= 2 ? str.replace_all(parts.get(0) + ":" + parts.get(1), " ", "") : ""
+    t
+
+// --- HELPER 2: DATA FETCHER (Moved Outside) ---
+// --- HELPER 2: DATA FETCHER (Moved Outside) ---
+f(string t) => 
+    if t == ""
+        [float(na), float(na), float(na), float(na), float(na)]
+    else
+        request.security(t, timeframe.period, [open, high, low, close, volume])
+
+// --- HELPER 3: MATH ENGINE (Moved Outside) ---
+ret(float val, float prev) => 
+    float r = 0.0
+    float valid = 0.0
+    if not na(val) and not na(prev) and prev != 0
+        r := ((val / prev) - 1)
+        valid := 1.0
+    [r, valid]
+
+// @function Calculates equal weighted index, Mansfield RS, and Total Volume
+// @param data_string The comma-separated list of tickers
+// @param bench The benchmark ticker for RS
+// @param rs_weeks The length for the RS calculation
+// @returns IndexResult object containing all plot data
+export calc(string data_string, string bench, int rs_weeks) =>
+    pairs_arr = str.split(data_string, ",")
+
+    // --- FETCH DATA ---
+    [o01,h01,l01,c01,vol01]=f(get_s(pairs_arr, 0)), [o02,h02,l02,c02,vol02]=f(get_s(pairs_arr, 1)), [o03,h03,l03,c03,vol03]=f(get_s(pairs_arr, 2)), [o04,h04,l04,c04,vol04]=f(get_s(pairs_arr, 3)), [o05,h05,l05,c05,vol05]=f(get_s(pairs_arr, 4))
+    [o06,h06,l06,c06,vol06]=f(get_s(pairs_arr, 5)), [o07,h07,l07,c07,vol07]=f(get_s(pairs_arr, 6)), [o08,h08,l08,c08,vol08]=f(get_s(pairs_arr, 7)), [o09,h09,l09,c09,vol09]=f(get_s(pairs_arr, 8)), [o10,h10,l10,c10,vol10]=f(get_s(pairs_arr, 9))
+    [o11,h11,l11,c11,vol11]=f(get_s(pairs_arr, 10)), [o12,h12,l12,c12,vol12]=f(get_s(pairs_arr, 11)), [o13,h13,l13,c13,vol13]=f(get_s(pairs_arr, 12)), [o14,h14,l14,c14,vol14]=f(get_s(pairs_arr, 13)), [o15,h15,l15,c15,vol15]=f(get_s(pairs_arr, 14))
+    [o16,h16,l16,c16,vol16]=f(get_s(pairs_arr, 15)), [o17,h17,l17,c17,vol17]=f(get_s(pairs_arr, 16)), [o18,h18,l18,c18,vol18]=f(get_s(pairs_arr, 17)), [o19,h19,l19,c19,vol19]=f(get_s(pairs_arr, 18)), [o20,h20,l20,c20,vol20]=f(get_s(pairs_arr, 19))
+    [o21,h21,l21,c21,vol21]=f(get_s(pairs_arr, 20)), [o22,h22,l22,c22,vol22]=f(get_s(pairs_arr, 21)), [o23,h23,l23,c23,vol23]=f(get_s(pairs_arr, 22)), [o24,h24,l24,c24,vol24]=f(get_s(pairs_arr, 23)), [o25,h25,l25,c25,vol25]=f(get_s(pairs_arr, 24))
+    [o26,h26,l26,c26,vol26]=f(get_s(pairs_arr, 25)), [o27,h27,l27,c27,vol27]=f(get_s(pairs_arr, 26)), [o28,h28,l28,c28,vol28]=f(get_s(pairs_arr, 27)), [o29,h29,l29,c29,vol29]=f(get_s(pairs_arr, 28)), [o30,h30,l30,c30,vol30]=f(get_s(pairs_arr, 29))
+    [o31,h31,l31,c31,vol31]=f(get_s(pairs_arr, 30)), [o32,h32,l32,c32,vol32]=f(get_s(pairs_arr, 31)), [o33,h33,l33,c33,vol33]=f(get_s(pairs_arr, 32)), [o34,h34,l34,c34,vol34]=f(get_s(pairs_arr, 33)), [o35,h35,l35,c35,vol35]=f(get_s(pairs_arr, 34))
+    [o36,h36,l36,c36,vol36]=f(get_s(pairs_arr, 35)), [o37,h37,l37,c37,vol37]=f(get_s(pairs_arr, 36)), [o38,h38,l38,c38,vol38]=f(get_s(pairs_arr, 37)), [o39,h39,l39,c39,vol39]=f(get_s(pairs_arr, 38))
+
+    // --- CALCULATE RETURNS ---
+    [rO01, v01] = ret(o01, c01[1]), [rH01, v_h01] = ret(h01, c01[1]), [rL01, v_l01] = ret(l01, c01[1]), [rC01, v_c01] = ret(c01, c01[1])
+    [rO02, v02] = ret(o02, c02[1]), [rH02, v_h02] = ret(h02, c02[1]), [rL02, v_l02] = ret(l02, c02[1]), [rC02, v_c02] = ret(c02, c02[1])
+    [rO03, v03] = ret(o03, c03[1]), [rH03, v_h03] = ret(h03, c03[1]), [rL03, v_l03] = ret(l03, c03[1]), [rC03, v_c03] = ret(c03, c03[1])
+    [rO04, v04] = ret(o04, c04[1]), [rH04, v_h04] = ret(h04, c04[1]), [rL04, v_l04] = ret(l04, c04[1]), [rC04, v_c04] = ret(c04, c04[1])
+    [rO05, v05] = ret(o05, c05[1]), [rH05, v_h05] = ret(h05, c05[1]), [rL05, v_l05] = ret(l05, c05[1]), [rC05, v_c05] = ret(c05, c05[1])
+    [rO06, v06] = ret(o06, c06[1]), [rH06, v_h06] = ret(h06, c06[1]), [rL06, v_l06] = ret(l06, c06[1]), [rC06, v_c06] = ret(c06, c06[1])
+    [rO07, v07] = ret(o07, c07[1]), [rH07, v_h07] = ret(h07, c07[1]), [rL07, v_l07] = ret(l07, c07[1]), [rC07, v_c07] = ret(c07, c07[1])
+    [rO08, v08] = ret(o08, c08[1]), [rH08, v_h08] = ret(h08, c08[1]), [rL08, v_l08] = ret(l08, c08[1]), [rC08, v_c08] = ret(c08, c08[1])
+    [rO09, v09] = ret(o09, c09[1]), [rH09, v_h09] = ret(h09, c09[1]), [rL09, v_l09] = ret(l09, c09[1]), [rC09, v_c09] = ret(c09, c09[1])
+    [rO10, v10] = ret(o10, c10[1]), [rH10, v_h10] = ret(h10, c10[1]), [rL10, v_l10] = ret(l10, c10[1]), [rC10, v_c10] = ret(c10, c10[1])
+    [rO11, v11] = ret(o11, c11[1]), [rH11, v_h11] = ret(h11, c11[1]), [rL11, v_l11] = ret(l11, c11[1]), [rC11, v_c11] = ret(c11, c11[1])
+    [rO12, v12] = ret(o12, c12[1]), [rH12, v_h12] = ret(h12, c12[1]), [rL12, v_l12] = ret(l12, c12[1]), [rC12, v_c12] = ret(c12, c12[1])
+    [rO13, v13] = ret(o13, c13[1]), [rH13, v_h13] = ret(h13, c13[1]), [rL13, v_l13] = ret(l13, c13[1]), [rC13, v_c13] = ret(c13, c13[1])
+    [rO14, v14] = ret(o14, c14[1]), [rH14, v_h14] = ret(h14, c14[1]), [rL14, v_l14] = ret(l14, c14[1]), [rC14, v_c14] = ret(c14, c14[1])
+    [rO15, v15] = ret(o15, c15[1]), [rH15, v_h15] = ret(h15, c15[1]), [rL15, v_l15] = ret(l15, c15[1]), [rC15, v_c15] = ret(c15, c15[1])
+    [rO16, v16] = ret(o16, c16[1]), [rH16, v_h16] = ret(h16, c16[1]), [rL16, v_l16] = ret(l16, c16[1]), [rC16, v_c16] = ret(c16, c16[1])
+    [rO17, v17] = ret(o17, c17[1]), [rH17, v_h17] = ret(h17, c17[1]), [rL17, v_l17] = ret(l17, c17[1]), [rC17, v_c17] = ret(c17, c17[1])
+    [rO18, v18] = ret(o18, c18[1]), [rH18, v_h18] = ret(h18, c18[1]), [rL18, v_l18] = ret(l18, c18[1]), [rC18, v_c18] = ret(c18, c18[1])
+    [rO19, v19] = ret(o19, c19[1]), [rH19, v_h19] = ret(h19, c19[1]), [rL19, v_l19] = ret(l19, c19[1]), [rC19, v_c19] = ret(c19, c19[1])
+    [rO20, v20] = ret(o20, c20[1]), [rH20, v_h20] = ret(h20, c20[1]), [rL20, v_l20] = ret(l20, c20[1]), [rC20, v_c20] = ret(c20, c20[1])
+    [rO21, v21] = ret(o21, c21[1]), [rH21, v_h21] = ret(h21, c21[1]), [rL21, v_l21] = ret(l21, c21[1]), [rC21, v_c21] = ret(c21, c21[1])
+    [rO22, v22] = ret(o22, c22[1]), [rH22, v_h22] = ret(h22, c22[1]), [rL22, v_l22] = ret(l22, c22[1]), [rC22, v_c22] = ret(c22, c22[1])
+    [rO23, v23] = ret(o23, c23[1]), [rH23, v_h23] = ret(h23, c23[1]), [rL23, v_l23] = ret(l23, c23[1]), [rC23, v_c23] = ret(c23, c23[1])
+    [rO24, v24] = ret(o24, c24[1]), [rH24, v_h24] = ret(h24, c24[1]), [rL24, v_l24] = ret(l24, c24[1]), [rC24, v_c24] = ret(c24, c24[1])
+    [rO25, v25] = ret(o25, c25[1]), [rH25, v_h25] = ret(h25, c25[1]), [rL25, v_l25] = ret(l25, c25[1]), [rC25, v_c25] = ret(c25, c25[1])
+    [rO26, v26] = ret(o26, c26[1]), [rH26, v_h26] = ret(h26, c26[1]), [rL26, v_l26] = ret(l26, c26[1]), [rC26, v_c26] = ret(c26, c26[1])
+    [rO27, v27] = ret(o27, c27[1]), [rH27, v_h27] = ret(h27, c27[1]), [rL27, v_l27] = ret(l27, c27[1]), [rC27, v_c27] = ret(c27, c27[1])
+    [rO28, v28] = ret(o28, c28[1]), [rH28, v_h28] = ret(h28, c28[1]), [rL28, v_l28] = ret(l28, c28[1]), [rC28, v_c28] = ret(c28, c28[1])
+    [rO29, v29] = ret(o29, c29[1]), [rH29, v_h29] = ret(h29, c29[1]), [rL29, v_l29] = ret(l29, c29[1]), [rC29, v_c29] = ret(c29, c29[1])
+    [rO30, v30] = ret(o30, c30[1]), [rH30, v_h30] = ret(h30, c30[1]), [rL30, v_l30] = ret(l30, c30[1]), [rC30, v_c30] = ret(c30, c30[1])
+    [rO31, v31] = ret(o31, c31[1]), [rH31, v_h31] = ret(h31, c31[1]), [rL31, v_l31] = ret(l31, c31[1]), [rC31, v_c31] = ret(c31, c31[1])
+    [rO32, v32] = ret(o32, c32[1]), [rH32, v_h32] = ret(h32, c32[1]), [rL32, v_l32] = ret(l32, c32[1]), [rC32, v_c32] = ret(c32, c32[1])
+    [rO33, v33] = ret(o33, c33[1]), [rH33, v_h33] = ret(h33, c33[1]), [rL33, v_l33] = ret(l33, c33[1]), [rC33, v_c33] = ret(c33, c33[1])
+    [rO34, v34] = ret(o34, c34[1]), [rH34, v_h34] = ret(h34, c34[1]), [rL34, v_l34] = ret(l34, c34[1]), [rC34, v_c34] = ret(c34, c34[1])
+    [rO35, v35] = ret(o35, c35[1]), [rH35, v_h35] = ret(h35, c35[1]), [rL35, v_l35] = ret(l35, c35[1]), [rC35, v_c35] = ret(c35, c35[1])
+    [rO36, v36] = ret(o36, c36[1]), [rH36, v_h36] = ret(h36, c36[1]), [rL36, v_l36] = ret(l36, c36[1]), [rC36, v_c36] = ret(c36, c36[1])
+    [rO37, v37] = ret(o37, c37[1]), [rH37, v_h37] = ret(h37, c37[1]), [rL37, v_l37] = ret(l37, c37[1]), [rC37, v_c37] = ret(c37, c37[1])
+    [rO38, v38] = ret(o38, c38[1]), [rH38, v_h38] = ret(h38, c38[1]), [rL38, v_l38] = ret(l38, c38[1]), [rC38, v_c38] = ret(c38, c38[1])
+    [rO39, v39] = ret(o39, c39[1]), [rH39, v_h39] = ret(h39, c39[1]), [rL39, v_l39] = ret(l39, c39[1]), [rC39, v_c39] = ret(c39, c39[1])
+
+    // --- ACCUMULATION ---
+    totActive = v01+v02+v03+v04+v05+v06+v07+v08+v09+v10+v11+v12+v13+v14+v15+v16+v17+v18+v19+v20+v21+v22+v23+v24+v25+v26+v27+v28+v29+v30+v31+v32+v33+v34+v35+v36+v37+v38+v39
+    sumO = rO01+rO02+rO03+rO04+rO05+rO06+rO07+rO08+rO09+rO10+rO11+rO12+rO13+rO14+rO15+rO16+rO17+rO18+rO19+rO20+rO21+rO22+rO23+rO24+rO25+rO26+rO27+rO28+rO29+rO30+rO31+rO32+rO33+rO34+rO35+rO36+rO37+rO38+rO39
+    sumH = rH01+rH02+rH03+rH04+rH05+rH06+rH07+rH08+rH09+rH10+rH11+rH12+rH13+rH14+rH15+rH16+rH17+rH18+rH19+rH20+rH21+rH22+rH23+rH24+rH25+rH26+rH27+rH28+rH29+rH30+rH31+rH32+rH33+rH34+rH35+rH36+rH37+rH38+rH39
+    sumL = rL01+rL02+rL03+rL04+rL05+rL06+rL07+rL08+rL09+rL10+rL11+rL12+rL13+rL14+rL15+rL16+rL17+rL18+rL19+rL20+rL21+rL22+rL23+rL24+rL25+rL26+rL27+rL28+rL29+rL30+rL31+rL32+rL33+rL34+rL35+rL36+rL37+rL38+rL39
+    sumC = rC01+rC02+rC03+rC04+rC05+rC06+rC07+rC08+rC09+rC10+rC11+rC12+rC13+rC14+rC15+rC16+rC17+rC18+rC19+rC20+rC21+rC22+rC23+rC24+rC25+rC26+rC27+rC28+rC29+rC30+rC31+rC32+rC33+rC34+rC35+rC36+rC37+rC38+rC39
+    
+    // Summing raw volume
+    sumVol = nz(vol01)+nz(vol02)+nz(vol03)+nz(vol04)+nz(vol05)+nz(vol06)+nz(vol07)+nz(vol08)+nz(vol09)+nz(vol10)+nz(vol11)+nz(vol12)+nz(vol13)+nz(vol14)+nz(vol15)+nz(vol16)+nz(vol17)+nz(vol18)+nz(vol19)+nz(vol20)+nz(vol21)+nz(vol22)+nz(vol23)+nz(vol24)+nz(vol25)+nz(vol26)+nz(vol27)+nz(vol28)+nz(vol29)+nz(vol30)+nz(vol31)+nz(vol32)+nz(vol33)+nz(vol34)+nz(vol35)+nz(vol36)+nz(vol37)+nz(vol38)+nz(vol39)
+
+    var float idx_C = 100.0
+    pC = nz(idx_C[1], 100.0)
+
+    fO = totActive > 0 ? sumO / totActive : 0.0
+    fH = totActive > 0 ? sumH / totActive : 0.0
+    fL = totActive > 0 ? sumL / totActive : 0.0
+    fC = totActive > 0 ? sumC / totActive : 0.0
+
+    idx_O = pC * (1 + fO)
+    idx_H = pC * (1 + fH)
+    idx_L = pC * (1 + fL)
+    idx_C := pC * (1 + fC)
+
+    // --- MANSFIELD RS CALC ---
+    int final_len = rs_weeks
+    if timeframe.isdaily
+        final_len := math.round(rs_weeks * (252.0 / 52.0))
+    else if timeframe.ismonthly
+        final_len := math.max(1, math.round(rs_weeks / 4.333))
+
+    bench_c = request.security(bench, timeframe.period, close)
+    ratio = idx_C / nz(bench_c, 1)
+    m_rs = ((ratio / ta.sma(ratio, final_len)) - 1) * 10
+
+    // Package the results
+    IndexResult.new(idx_O, idx_H, idx_L, idx_C, fC, m_rs, sumVol, int(totActive))
