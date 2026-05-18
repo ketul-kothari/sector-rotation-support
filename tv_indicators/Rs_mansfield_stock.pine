@@ -1,0 +1,68 @@
+//@version=6
+indicator("Mansfield RS Selected Scrip", overlay=false, precision=2)
+
+// --- 1. INPUTS ---
+bench           = input.string("NSE:CNX500", "Benchmark (e.g., NSE:CNX500 or SPY)")
+rs_weeks        = input.int(52, "RS Length (in Weeks)")
+multiplier      = input.float(10.0, "Mansfield Multiplier")
+slope_weeks     = input.int(4, "Slope Length (in Weeks)")
+slope_thresh    = input.float(0.25, "Slope Threshold")
+
+// --- 2. TIMEFRAME AWARENESS ---
+int final_len = rs_weeks
+int slope_len = slope_weeks
+
+if timeframe.isdaily
+    final_len := math.round(rs_weeks * (252.0 / 52.0))
+    slope_len := math.round(slope_weeks * (252.0 / 52.0))
+else if timeframe.ismonthly
+    final_len := math.max(1, math.round(rs_weeks / 4.333))
+    slope_len := math.max(1, math.round(slope_weeks / 4.333))
+
+slope_len := math.max(1, slope_len)
+
+// --- 3. DATA FETCHING ---
+bench_c = request.security(bench, timeframe.period, close)
+
+// --- 4. MANSFIELD RS & SLOPE CALCULATION ---
+ratio = close / nz(bench_c, 1)
+m_rs = ((ratio / ta.sma(ratio, final_len)) - 1) * multiplier
+rs_slope = (m_rs - m_rs[slope_len]) / slope_len
+
+// Check criteria
+bool rs_pass = m_rs > 0
+bool slope_pass = rs_slope > slope_thresh
+
+// --- 5. PLOTTING & STYLING ---
+// CHANGE: Changed display.all to display.pane to hide the static "0.00" text from your status line completely
+z_plot = plot(0, "Zero Line", color=color.new(color.gray, 50), display=display.pane)
+
+// This draws the white line on your chart AND handles the hover value text in the status line
+rs_plot = plot(m_rs, "Mansfield RS", color=color.rgb(135, 133, 133), linewidth=1, display=display.all)
+
+fill(rs_plot, z_plot, m_rs >= 0 ? m_rs : 0, 0, color.new(#098b76, 25), color.new(#098b76, 60), title="Bullish Zone")
+fill(rs_plot, z_plot, 0, m_rs < 0 ? m_rs : 0, color.new(#850812, 25), color.new(#850813, 60), title="Bearish Zone")
+
+// --- 6. HOVER DATA (STATUS LINE FIX) ---
+// This injects the dynamic slope calculations directly next to your RS value in the status line using yellow text
+plot(rs_slope, "RS Slope", color=color.rgb(23, 10, 201), display=display.status_line + display.data_window)
+// --- 7. ON-SCREEN TABLE (CURRENT BAR ONLY) ---
+var table info_tab = table.new(position.top_right, 4, 2, bgcolor=color.white, border_width=1, border_color=color.black)
+
+color header_bg = color.rgb(173, 216, 230) // Light Blue
+color header_fg = color.black
+
+if barstate.islast
+    // --- Draw Column Headers ---
+    table.cell(info_tab, 1, 0, "Date", text_color=header_fg, bgcolor=header_bg, text_size=size.small)
+    table.cell(info_tab, 2, 0, "RS > 0", text_color=header_fg, bgcolor=header_bg, text_size=size.small)
+    table.cell(info_tab, 3, 0, "Slope > 0.25", text_color=header_fg, bgcolor=header_bg, text_size=size.small)
+    
+    // --- Draw Data ---
+    string current_date = "Latest"
+    color rs_color = rs_pass ? color.green : color.red
+    color slope_color = slope_pass ? color.green : color.red
+    
+    table.cell(info_tab, 1, 1, current_date, text_color=color.black, bgcolor=color.white, text_size=size.small)
+    table.cell(info_tab, 2, 1, str.tostring(m_rs, "#.##"), text_color=rs_color, bgcolor=color.white, text_size=size.small)
+    table.cell(info_tab, 3, 1, str.tostring(rs_slope, "#.##"), text_color=slope_color, bgcolor=color.white, text_size=size.small)
