@@ -36,10 +36,10 @@ def generate_pine_automation():
         parts = [f"{EXCHANGE_PREFIX}:{row['symbol']}" for _, row in top_stocks.iterrows()]
         return ", ".join(parts)
 
-    # 5. Process Categories
+    # 5. Process Categories (Updated to include Sectors)
     results = []
     
-    for category_name, col_name in [("Industry", "industry"), ("Basic Industry", "basic_industry")]:
+    for category_name, col_name in [("Sector", "sector"), ("Industry", "industry"), ("Basic Industry", "basic_industry")]:
         # Get unique names, drop NaNs, and sort
         unique_names = sorted([name for name in df[col_name].unique() if pd.notna(name)])
         
