@@ -1,0 +1,223 @@
+//@version=6
+indicator("Stage 1 & Consolidation Breakout Setup", overlay=true, precision=2, max_lines_count=500)
+
+// =========================================================================
+// PURE WEEKLY ARCHITECTURE
+// Note: This script must be applied directly to a Weekly Chart.
+// =========================================================================
+
+// --- 1. LIQUIDITY & GENERAL INPUTS ---
+group_gen   = "General & Liquidity"
+bench       = input.string("NSE:CNX500", "Benchmark", group=group_gen)
+multiplier  = input.float(10.0, "Mansfield Multiplier", group=group_gen)
+min_mc_cr   = input.float(500.0, "Min Market Cap (Cr)", group=group_gen)
+min_vol     = input.int(250000, "Min Avg Volume (10W)", group=group_gen)
+min_to_cr   = input.float(20.0, "Min Avg Turnover (Cr, 10W)", group=group_gen)
+
+// --- 2. STAGE 1 INPUTS ---
+group_s1      = "Stage 1 Breakout Logic"
+s1_sma_fast   = input.int(10, "Fast MA (Weeks)", group=group_s1)
+s1_sma_slow   = input.int(30, "Slow MA (Weeks)", group=group_s1)
+s1_sma_fail   = input.int(30, "Failure MA (Weeks)", group=group_s1)
+s1_ma_slp_wks = input.int(5, "MA Slope Lookback (Weeks)", group=group_s1)
+s1_ma_slp_csh = input.float(-3.0, "Min MA Slope % (Cushion)", group=group_s1) 
+s1_rs_val_thr = input.float(0.0, "RS Zero Threshold", group=group_s1)
+s1_rs_slp_wks = input.int(4, "RS Slope Length (Weeks)", group=group_s1)
+s1_rs_slp_thr = input.float(0.30, "RS Slope Threshold", group=group_s1)
+s1_brk_buf_pct= input.float(1.0, "Breakout Buffer % (Above MA)", group=group_s1)
+
+group_s1_vol  = "Stage 1 Volume Confirmation"
+s1_vol_ma_short     = input.int(4, "Short Volume MA (Weeks)", group=group_s1_vol, tooltip="The recent volume build-up period.")
+s1_vol_ma_long      = input.int(10, "Long Volume MA (Weeks)", group=group_s1_vol, tooltip="The baseline volume period to compare the build-up against.")
+s1_vol_buildup_mult = input.float(2.0, "Build-Up Multiplier", group=group_s1_vol, tooltip="Short MA must be this many times larger than Long MA to bypass the live surge requirement.")
+s1_vol_brk_mult     = input.float(1.5, "Breakout Surge Multiplier", group=group_s1_vol, tooltip="If no build-up exists, the live breakout week volume must be this many times larger than the Short MA.")
+
+// --- 3. STAGE 2 CONSOLIDATION INPUTS ---
+group_s2       = "Stage 2 Anchor Logic"
+s2_sma_fast    = input.int(10, "Fast MA (Weeks)", group=group_s2)
+s2_sma_slow    = input.int(30, "Slow MA (Weeks)", group=group_s2)
+s2_runup_wks   = input.int(26, "Runup Lookback (Weeks)", group=group_s2)
+s2_runup_pct   = input.float(20.0, "Min Runup % (Low Close to High)", group=group_s2)
+s2_bounce_wks  = input.int(52, "Bounce Lookback (Weeks)", group=group_s2)
+s2_bounce_pct  = input.float(30.0, "Min Bounce % (Above Low)", group=group_s2)
+s2_rs_slp_wks  = input.int(4, "RS Slope Length (Weeks)", group=group_s2)
+s2_rs_slp_thr  = input.float(0.30, "RS Slope Threshold", group=group_s2)
+s2_rs_val_thr  = input.float(0.0, "RS Zero Threshold", group=group_s2)
+s2_conf_wks    = input.int(4, "Confirmation Period (Weeks)", group=group_s2)
+s2_max_dd_pct  = input.float(40.0, "Max Drawdown %", group=group_s2)
+
+// --- 4. SHARED NATIVE WEEKLY CALCULATIONS ---
+b_close = request.security(bench, timeframe.period, close)
+w_ratio = close / nz(b_close, 1)
+m_rs    = ((w_ratio / ta.sma(w_ratio, 52)) - 1) * multiplier
+
+// --- 5. LIQUIDITY ---
+avg_vol = ta.sma(volume, 10)
+avg_to  = ta.sma((close * volume) / 10000000, 10)
+mc_data = request.financial(syminfo.tickerid, "MARKET_CAPITALIZATION", "W", ignore_invalid_symbol=true) / 10000000
+
+bool vol_pass = avg_vol >= min_vol
+bool to_pass  = avg_to >= min_to_cr
+bool mc_pass  = na(mc_data) or mc_data >= min_mc_cr
+bool liq_pass = vol_pass and to_pass and mc_pass
+
+// =====================================================================
+// 6. STAGE 1 BREAKOUT LOGIC & VOLUME CONFIRMATION
+// =====================================================================
+s1_ma_f    = ta.sma(close, s1_sma_fast)
+s1_ma_s    = ta.sma(close, s1_sma_slow)
+s1_ma_fail = ta.sma(close, s1_sma_fail)
+s1_ma_slp  = ((s1_ma_s - nz(s1_ma_s[s1_ma_slp_wks])) / nz(s1_ma_s[s1_ma_slp_wks])) * 100
+s1_rs_slp  = (m_rs - nz(m_rs[s1_rs_slp_wks])) / s1_rs_slp_wks
+
+float s1_breakout_level = s1_ma_s * (1 + (s1_brk_buf_pct / 100))
+
+// Stage 1 Volume Projection & Advanced Logic (Using volume[1] to calculate past averages)
+float s1_avg_vol_short = ta.sma(volume[1], s1_vol_ma_short) 
+float s1_avg_vol_long  = ta.sma(volume[1], s1_vol_ma_long)  
+float s1_projected_vol = volume
+
+if barstate.isrealtime
+    int current_day = dayofweek(timenow, syminfo.timezone)
+    int days_passed = current_day == dayofweek.monday ? 1 : current_day == dayofweek.tuesday ? 2 : current_day == dayofweek.wednesday ? 3 : current_day == dayofweek.thursday ? 4 : 5
+    s1_projected_vol := (volume / days_passed) * 5
+
+bool s1_vol_buildup_pass = s1_avg_vol_short >= (s1_avg_vol_long * s1_vol_buildup_mult)
+bool s1_vol_surge_pass   = s1_projected_vol >= (s1_avg_vol_short * s1_vol_brk_mult)
+bool s1_vol_pass    = s1_vol_buildup_pass or s1_vol_surge_pass
+
+bool s1_price_pass  = close >= s1_breakout_level 
+bool s1_ma_slp_pass = s1_ma_slp >= s1_ma_slp_csh
+bool s1_rs_pass     = m_rs > s1_rs_val_thr
+bool s1_rs_slp_pass = s1_rs_slp > s1_rs_slp_thr
+bool s1_rs_combined = s1_rs_pass or s1_rs_slp_pass
+
+bool s1_condition   = s1_price_pass and s1_ma_slp_pass and s1_rs_combined and s1_vol_pass and liq_pass
+
+var bool in_stage_1 = false
+bool s1_trigger = false
+
+if s1_condition and not in_stage_1
+    in_stage_1 := true
+    s1_trigger := true
+else if close < s1_ma_fail
+    in_stage_1 := false
+
+// =====================================================================
+// 7. STAGE 2 CONSOLIDATION (ANCHOR SETUP & LINE & LABEL)
+// =====================================================================
+
+s2_ma_f   = ta.sma(close, s2_sma_fast)
+s2_ma_s   = ta.sma(close, s2_sma_slow)
+s2_rs_slp = (m_rs - nz(m_rs[s2_rs_slp_wks])) / s2_rs_slp_wks
+
+s2_cand_base  = ta.lowest(close, s2_runup_wks)
+s2_cand_low52 = ta.lowest(low, s2_bounce_wks)
+
+s2_valid_runup  = high >= (s2_cand_base * (1 + (s2_runup_pct / 100)))
+s2_valid_bounce = close >= (s2_cand_low52 * (1 + (s2_bounce_pct / 100)))
+s2_valid_trend  = close > s2_ma_s and close > s2_ma_f
+s2_valid_rs     = (m_rs > s2_rs_val_thr) or (s2_rs_slp > s2_rs_slp_thr)
+
+bool s2_is_potential_anchor = s2_valid_runup and s2_valid_bounce and s2_valid_trend and s2_valid_rs and liq_pass
+
+var bool  in_s2_base = false
+var float active_anchor = na
+var line  s2_base_line = na
+
+// Variables for Label tracking
+var label s2_base_label     = na
+var float s2_max_dd_in_base = 0.0
+var int   s2_base_length    = 0
+
+bool  s2_past_potential = s2_is_potential_anchor[s2_conf_wks]
+float s2_past_high      = high[s2_conf_wks]
+bool  s2_held_below     = ta.highest(high, s2_conf_wks) < s2_past_high
+
+bool s2_confirmed_anchor = s2_past_potential and s2_held_below and not in_s2_base
+
+// Simplified Stage 2 Trigger
+bool s2_trigger = in_s2_base and (high >= active_anchor)
+
+// Extracting ta.lowest to the global scope to prevent the compiler warning
+float s2_recent_lowest = ta.lowest(low, s2_conf_wks)
+
+if s2_confirmed_anchor
+    in_s2_base := true
+    active_anchor := s2_past_high
+    
+    // Draw the Base Line
+    s2_base_line := line.new(x1=time[s2_conf_wks], y1=active_anchor, x2=time, y2=active_anchor, xloc=xloc.bar_time, color=color.purple, style=line.style_solid, width=2)
+    
+    // Initialize Base Length 
+    s2_base_length := s2_conf_wks
+    
+    // Calculate Initial Max Drawdown using the global variable
+    s2_max_dd_in_base := ((active_anchor - s2_recent_lowest) / active_anchor) * 100
+    
+    // Create the Label directly above the historical anchor candle
+    string lbl_text = "DD: " + str.tostring(s2_max_dd_in_base, "#.##") + "%\nBL: " + str.tostring(s2_base_length) + "W"
+    s2_base_label := label.new(x=time[s2_conf_wks], y=active_anchor, text=lbl_text, xloc=xloc.bar_time, yloc=yloc.price, color=color.new(color.white, 100), textcolor=color.purple, style=label.style_label_down, size=size.small)
+
+else if in_s2_base
+    // Extend the line
+    line.set_x2(s2_base_line, time)
+    
+    // Increment base length
+    s2_base_length += 1
+    
+    // Check for deeper drawdown and update max
+    float current_dd = ((active_anchor - low) / active_anchor) * 100
+    s2_max_dd_in_base := math.max(s2_max_dd_in_base, current_dd)
+    
+    // Update ONLY the text of the label, leaving its position locked to the anchor candle
+    string lbl_text = "DD: " + str.tostring(s2_max_dd_in_base, "#.##") + "%\nBL: " + str.tostring(s2_base_length) + "W"
+    label.set_text(s2_base_label, lbl_text)
+    
+    // Invalidate base on breakout or failure
+    if close > active_anchor or low <= active_anchor * (1 - (s2_max_dd_pct / 100))
+        in_s2_base := false
+        active_anchor := na
+
+// =====================================================================
+// 8. VISUALS & ALERTS
+// =====================================================================
+plotshape(s1_trigger, title="Stage 1 Breakout Marker", style=shape.triangleup, location=location.belowbar, color=color.blue, size=size.tiny)
+plotshape(s2_trigger, title="Stage 2 Consolidation Breakout", style=shape.triangledown, location=location.abovebar, color=color.purple, size=size.tiny)
+
+// Condition 1: For Watchlist < 70 (Only Stage 1)
+alertcondition(s1_trigger, title="1. Stage 1 Breakout ONLY", message="STAGE 1 BREAKOUT: {{ticker}}")
+
+// Condition 2: For Watchlist >= 70 (Both Stage 1 & 2)
+alertcondition(s1_trigger or s2_trigger, title="2. Both Stage 1 & 2 Breakouts", message="BREAKOUT (Stage 1 or 2): {{ticker}}")
+
+// Condition 3: Just in case you ever want only Stage 2
+alertcondition(s2_trigger, title="3. Stage 2 Breakout ONLY", message="STAGE 2 BREAKOUT: {{ticker}}")
+
+// =====================================================================
+// 9. DEBUGGING (DATA WINDOW)
+// =====================================================================
+
+// Liquidity Parameters
+plot(liq_pass ? 1 : 0, title="[LIQ] Master Liquidity Pass", display=display.data_window)
+plot(vol_pass ? 1 : 0, title="[LIQ] Vol", display=display.data_window)
+plot(to_pass ? 1 : 0, title="[LIQ] Turnover", display=display.data_window)
+plot(mc_pass ? 1 : 0, title="[LIQ] Mcap", display=display.data_window)
+
+// Stage 1 Conditions
+plot(s1_condition ? 1 : 0, title="[S1] Master Breakout Trigger", display=display.data_window)
+plot(s1_price_pass ? 1 : 0, title="[S1] Price Breakout Pass", display=display.data_window)
+plot(s1_ma_slp_pass ? 1 : 0, title="[S1] MA Slope Pass", display=display.data_window)
+plot(s1_rs_combined ? 1 : 0, title="[S1] RS Momentum Pass", display=display.data_window)
+plot(s1_vol_buildup_pass ? 1 : 0, title="[S1] Vol Build-up Pass", display=display.data_window)
+plot(s1_vol_surge_pass ? 1 : 0, title="[S1] Vol Breakout Surge Pass", display=display.data_window)
+plot(s1_vol_pass ? 1 : 0, title="[S1] Master Volume Pass", color=s1_vol_pass ? color.green : color.red, display=display.data_window)
+
+// Stage 2 Conditions
+plot(s2_trigger ? 1 : 0, title="[S2] Master Breakout Trigger", display=display.data_window)
+plot(s2_valid_runup ? 1 : 0, title="[S2] Prior Runup Pass", display=display.data_window)
+plot(s2_valid_bounce ? 1 : 0, title="[S2] Prior Bounce Pass", display=display.data_window)
+plot(s2_valid_trend ? 1 : 0, title="[S2] Moving Average Trend Pass", display=display.data_window)
+plot(s2_valid_rs ? 1 : 0, title="[S2] Base RS Pass", display=display.data_window)
+plot(in_s2_base ? 1 : 0, title="[S2] Actively Inside Base", display=display.data_window)
+plot(active_anchor, title="[S2] Active Anchor Level", display=display.data_window)
