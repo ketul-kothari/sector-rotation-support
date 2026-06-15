@@ -29,15 +29,15 @@ s1_brk_buf_pct= input.float(1.0, "Breakout Buffer % (Above MA)", group=group_s1)
 group_s1_vol  = "Stage 1 Volume Confirmation"
 s1_vol_ma_short     = input.int(4, "Short Volume MA (Weeks)", group=group_s1_vol, tooltip="The recent volume build-up period.")
 s1_vol_ma_long      = input.int(10, "Long Volume MA (Weeks)", group=group_s1_vol, tooltip="The baseline volume period to compare the build-up against.")
-s1_vol_buildup_mult = input.float(2.0, "Build-Up Multiplier", group=group_s1_vol, tooltip="Short MA must be this many times larger than Long MA to bypass the live surge requirement.")
-s1_vol_brk_mult     = input.float(1.5, "Breakout Surge Multiplier", group=group_s1_vol, tooltip="If no build-up exists, the live breakout week volume must be this many times larger than the Short MA.")
+s1_vol_buildup_mult = input.float(1.5, "Build-Up Multiplier", group=group_s1_vol, tooltip="Short MA must be this many times larger than Long MA to bypass the live surge requirement.")
+s1_vol_brk_mult     = input.float(2.0, "Breakout Surge Multiplier", group=group_s1_vol, tooltip="If no build-up exists, the live breakout week volume must be this many times larger than the Short MA.")
 
 // --- 3. STAGE 2 CONSOLIDATION INPUTS ---
 group_s2       = "Stage 2 Anchor Logic"
 s2_sma_fast    = input.int(10, "Fast MA (Weeks)", group=group_s2)
 s2_sma_slow    = input.int(30, "Slow MA (Weeks)", group=group_s2)
 s2_runup_wks   = input.int(26, "Runup Lookback (Weeks)", group=group_s2)
-s2_runup_pct   = input.float(20.0, "Min Runup % (Low Close to High)", group=group_s2)
+s2_runup_pct   = input.float(30.0, "Min Runup % (Low Close to High)", group=group_s2)
 s2_bounce_wks  = input.int(52, "Bounce Lookback (Weeks)", group=group_s2)
 s2_bounce_pct  = input.float(30.0, "Min Bounce % (Above Low)", group=group_s2)
 s2_rs_slp_wks  = input.int(4, "RS Slope Length (Weeks)", group=group_s2)
@@ -54,7 +54,8 @@ m_rs    = ((w_ratio / ta.sma(w_ratio, 52)) - 1) * multiplier
 // --- 5. LIQUIDITY ---
 avg_vol = ta.sma(volume, 10)
 avg_to  = ta.sma((close * volume) / 10000000, 10)
-mc_data = request.financial(syminfo.tickerid, "MARKET_CAPITALIZATION", "W", ignore_invalid_symbol=true) / 10000000
+tso = request.financial(syminfo.tickerid, "TOTAL_SHARES_OUTSTANDING", "FQ", ignore_invalid_symbol=true)
+mc_data = (tso * close) / 10000000 // TSO * Price gives Market Cap, divided by 10Cr for your criteria
 
 bool vol_pass = avg_vol >= min_vol
 bool to_pass  = avg_to >= min_to_cr
@@ -72,19 +73,31 @@ s1_rs_slp  = (m_rs - nz(m_rs[s1_rs_slp_wks])) / s1_rs_slp_wks
 
 float s1_breakout_level = s1_ma_s * (1 + (s1_brk_buf_pct / 100))
 
-// Stage 1 Volume Projection & Advanced Logic (Using volume[1] to calculate past averages)
-float s1_avg_vol_short = ta.sma(volume[1], s1_vol_ma_short) 
-float s1_avg_vol_long  = ta.sma(volume[1], s1_vol_ma_long)  
-float s1_projected_vol = volume
+// Past averages (Baseline without current live candle)
+float s1_avg_vol_short = ta.sma(volume[1], s1_vol_ma_short)  // Past Short Baseline
+float s1_avg_vol_long  = ta.sma(volume[1], s1_vol_ma_long)   // Past Long Baseline
 
+// 1. Calculate Live Projected Volume
+float s1_projected_vol = volume
 if barstate.isrealtime
     int current_day = dayofweek(timenow, syminfo.timezone)
     int days_passed = current_day == dayofweek.monday ? 1 : current_day == dayofweek.tuesday ? 2 : current_day == dayofweek.wednesday ? 3 : current_day == dayofweek.thursday ? 4 : 5
     s1_projected_vol := (volume / days_passed) * 5
 
-bool s1_vol_buildup_pass = s1_avg_vol_short >= (s1_avg_vol_long * s1_vol_buildup_mult)
+// 2. The Smart Buildup: Dynamically calculating Live Average
+// Takes projected volume + sum of past (s1_vol_ma_short - 1) weeks, divided by s1_vol_ma_short.
+float past_vol_sum = math.sum(volume[1], s1_vol_ma_short - 1)
+float live_short_avg = (s1_projected_vol + past_vol_sum) / s1_vol_ma_short
+
+// 3. The Weinstein Conditions (Input-Driven)
+// Condition A: Buildup (Live Short Avg >= Long Baseline * Buildup Multiplier)
+bool s1_vol_buildup_pass = live_short_avg >= (s1_avg_vol_long * s1_vol_buildup_mult)
+
+// Condition B: Direct Surge (Live Projected >= Past Short Baseline * Surge Multiplier)
 bool s1_vol_surge_pass   = s1_projected_vol >= (s1_avg_vol_short * s1_vol_brk_mult)
-bool s1_vol_pass    = s1_vol_buildup_pass or s1_vol_surge_pass
+
+// Final Stage 1 Volume Pass
+bool s1_vol_pass = s1_vol_buildup_pass or s1_vol_surge_pass
 
 bool s1_price_pass  = close >= s1_breakout_level 
 bool s1_ma_slp_pass = s1_ma_slp >= s1_ma_slp_csh
@@ -185,11 +198,15 @@ else if in_s2_base
 plotshape(s1_trigger, title="Stage 1 Breakout Marker", style=shape.triangleup, location=location.belowbar, color=color.blue, size=size.tiny)
 plotshape(s2_trigger, title="Stage 2 Consolidation Breakout", style=shape.triangledown, location=location.abovebar, color=color.purple, size=size.tiny)
 
+// --- HACK: Hidden Plot for Dynamic Alert Message ---
+brk_type_val = s1_trigger and s2_trigger ? 3 : s2_trigger ? 2 : s1_trigger ? 1 : 0
+plot(brk_type_val, title="BrkType", display=display.none)
+
 // Condition 1: For Watchlist < 70 (Only Stage 1)
 alertcondition(s1_trigger, title="1. Stage 1 Breakout ONLY", message="STAGE 1 BREAKOUT: {{ticker}}")
 
 // Condition 2: For Watchlist >= 70 (Both Stage 1 & 2)
-alertcondition(s1_trigger or s2_trigger, title="2. Both Stage 1 & 2 Breakouts", message="BREAKOUT (Stage 1 or 2): {{ticker}}")
+alertcondition(s1_trigger or s2_trigger, title="2. Both Stage 1 & 2 Breakouts", message="STAGE {{plot(\"BrkType\")}} BREAKOUT: {{ticker}}")
 
 // Condition 3: Just in case you ever want only Stage 2
 alertcondition(s2_trigger, title="3. Stage 2 Breakout ONLY", message="STAGE 2 BREAKOUT: {{ticker}}")
