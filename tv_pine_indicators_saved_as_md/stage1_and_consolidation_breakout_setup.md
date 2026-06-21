@@ -19,12 +19,12 @@ group_s1      = "Stage 1 Breakout Logic"
 s1_sma_fast   = input.int(10, "Fast MA (Weeks)", group=group_s1)
 s1_sma_slow   = input.int(30, "Slow MA (Weeks)", group=group_s1)
 s1_sma_fail   = input.int(30, "Failure MA (Weeks)", group=group_s1)
-s1_ma_slp_wks = input.int(5, "MA Slope Lookback (Weeks)", group=group_s1)
+s1_ma_slp_wks = input.int(4, "MA Slope Lookback (Weeks)", group=group_s1) // Changed from 5 to 4
 s1_ma_slp_csh = input.float(-3.0, "Min MA Slope % (Cushion)", group=group_s1) 
 s1_rs_val_thr = input.float(0.0, "RS Zero Threshold", group=group_s1)
 s1_rs_slp_wks = input.int(4, "RS Slope Length (Weeks)", group=group_s1)
 s1_rs_slp_thr = input.float(0.30, "RS Slope Threshold", group=group_s1)
-s1_brk_buf_pct= input.float(1.0, "Breakout Buffer % (Above MA)", group=group_s1)
+s1_brk_buf_pct= input.float(0.0, "Breakout Buffer % (Above MA)", group=group_s1) // Changed from 1.0 to 0.0
 
 group_s1_vol  = "Stage 1 Volume Confirmation"
 s1_vol_ma_short     = input.int(4, "Short Volume MA (Weeks)", group=group_s1_vol, tooltip="The recent volume build-up period.")
@@ -137,23 +137,31 @@ bool s2_is_potential_anchor = s2_valid_runup and s2_valid_bounce and s2_valid_tr
 var bool  in_s2_base = false
 var float active_anchor = na
 var line  s2_base_line = na
+var int   last_base_end_bar = 0
 
 // Variables for Label tracking
 var label s2_base_label     = na
 var float s2_max_dd_in_base = 0.0
 var int   s2_base_length    = 0
 
-bool  s2_past_potential = s2_is_potential_anchor[s2_conf_wks]
-float s2_past_high      = high[s2_conf_wks]
-bool  s2_held_below     = ta.highest(high, s2_conf_wks) < s2_past_high
+// Corrected boolean check for series in Pine Script
+bool s2_past_potential = s2_is_potential_anchor[s2_conf_wks] == true
+float s2_past_high      = nz(high[s2_conf_wks], high)
+bool  s2_held_below     = ta.highest(close, s2_conf_wks) <= s2_past_high // Changed from ta.highest(high...) < s2_past_high
 
-bool s2_confirmed_anchor = s2_past_potential and s2_held_below and not in_s2_base
+// Extracting ta.lowest to the global scope to prevent the compiler warning
+// NOTE: Now splitting logic vs tracking to accommodate the new rules
+float s2_recent_lowest_close = ta.lowest(close, s2_conf_wks) // For initial base validation (Logic)
+float s2_recent_lowest_low   = ta.lowest(low, s2_conf_wks)   // For data tracking (Label)
+
+// Check initial validity using the CLOSE to match the new rules
+bool  s2_dd_held = ((s2_past_high - s2_recent_lowest_close) / s2_past_high) * 100 <= s2_max_dd_pct
+bool  s2_valid_timing = nz(bar_index[s2_conf_wks], 0) > last_base_end_bar
+
+bool s2_confirmed_anchor = s2_past_potential and s2_held_below and s2_dd_held and not in_s2_base and s2_valid_timing
 
 // Simplified Stage 2 Trigger
 bool s2_trigger = in_s2_base and (high >= active_anchor)
-
-// Extracting ta.lowest to the global scope to prevent the compiler warning
-float s2_recent_lowest = ta.lowest(low, s2_conf_wks)
 
 if s2_confirmed_anchor
     in_s2_base := true
@@ -165,8 +173,8 @@ if s2_confirmed_anchor
     // Initialize Base Length 
     s2_base_length := s2_conf_wks
     
-    // Calculate Initial Max Drawdown using the global variable
-    s2_max_dd_in_base := ((active_anchor - s2_recent_lowest) / active_anchor) * 100
+    // Calculate Initial Max Drawdown using the true LOW for visual accuracy
+    s2_max_dd_in_base := ((active_anchor - s2_recent_lowest_low) / active_anchor) * 100
     
     // Create the Label directly above the historical anchor candle
     string lbl_text = "DD: " + str.tostring(s2_max_dd_in_base, "#.##") + "%\nBL: " + str.tostring(s2_base_length) + "W"
@@ -179,7 +187,7 @@ else if in_s2_base
     // Increment base length
     s2_base_length += 1
     
-    // Check for deeper drawdown and update max
+    // Check for deeper drawdown using the true LOW and update max
     float current_dd = ((active_anchor - low) / active_anchor) * 100
     s2_max_dd_in_base := math.max(s2_max_dd_in_base, current_dd)
     
@@ -187,10 +195,11 @@ else if in_s2_base
     string lbl_text = "DD: " + str.tostring(s2_max_dd_in_base, "#.##") + "%\nBL: " + str.tostring(s2_base_length) + "W"
     label.set_text(s2_base_label, lbl_text)
     
-    // Invalidate base on breakout or failure
-    if close > active_anchor or low <= active_anchor * (1 - (s2_max_dd_pct / 100))
+    // Invalidate base EXCLUSIVELY on weekly CLOSE breakout or failure
+    if close > active_anchor or close <= active_anchor * (1 - (s2_max_dd_pct / 100))
         in_s2_base := false
         active_anchor := na
+        last_base_end_bar := bar_index
 
 // =====================================================================
 // 8. VISUALS & ALERTS
