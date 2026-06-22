@@ -96,7 +96,7 @@ calc_weekly(float bench_close, float tso_data) =>
     bool s2_held_below         = ta.highest(close, math.max(1, s2_conf_wks)) <= s2_past_high 
     float s2_recent_lowest_close = ta.lowest(close, math.max(1, s2_conf_wks))
     bool s2_dd_held            = ((s2_past_high - s2_recent_lowest_close) / s2_past_high) * 100 <= s2_max_dd_pct
-    bool s2_valid_timing       = (bar_index >= s2_conf_wks) ? (bar_index[s2_conf_wks] > last_base_end_bar) : false
+    bool s2_valid_timing       = (bar_index >= s2_conf_wks) ? (bar_index[s2_conf_wks] >= last_base_end_bar) : false
     float s2_recent_lowest_low   = ta.lowest(low, math.max(1, s2_conf_wks))
 
     bool s2_confirmed_anchor = s2_past_potential and s2_held_below and s2_dd_held and not in_s2_base and s2_valid_timing
@@ -171,7 +171,7 @@ if w_data.in_s2
         
         line.set_x2(s2_base_line, time)
         
-        string lbl_text = "DD: " + str.tostring(live_max_dd, "#.##") + "%\nBL: " + str.tostring(w_data.base_len) + "W"
+        string lbl_text = "DD: " + str.tostring(live_max_dd, "#.##") + "%\nBL: " + str.tostring(w_data.base_len) + "W\nAnchor: " + str.tostring(w_data.anchor, "#.##")
         label.set_text(s2_base_label, lbl_text)
 else
     drawn_anchor := na
